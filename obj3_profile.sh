@@ -6,10 +6,13 @@ same=0
 while [ $i -lt $1 ]
 do
 	i=`expr $i + 1`
-	printf "$i "
+	printf "$i\n"
 	python obj3.py
 	same=`expr $same + $?`
 done
 
-diff=`expr $1 - $same`
-printf "\nChaotic performs better $diff out of $1 times\n"
+# Comparison on final average fitness values
+# printf "\nChaotic performs atleast as good as vanilla, $same out of $1 times\n"
+
+# Anomaly detection
+printf "\ncntChaos < cntVanilla but better average fitness, $same out of $1 times\n"
