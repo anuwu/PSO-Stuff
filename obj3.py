@@ -1,16 +1,11 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Function Definitions
-
 import numpy as np
 import sys
 
 
 def approx (num, rel, tol, cmpr) :
-	# Check if num is lower than relative
+	# Check if num is lower than relative and within tolerance
 	if cmpr == -1 :
-		return (rel - num)/np.abs(rel) <= tol
+		return num <= rel and (rel - num)/np.abs(rel) <= tol
 
 	# Check absolute difference to relative
 	if cmpr == 0 :
@@ -18,7 +13,7 @@ def approx (num, rel, tol, cmpr) :
 
 	# Check if num is higher than relative
 	if cmpr == 1 :
-		return (num - rel)/np.abs(rel) <= tol
+		return num >= rel and (num - rel)/np.abs(rel) <= tol
 
 x_min = 0
 
@@ -32,7 +27,7 @@ def obj (x) :
     # x_min = -2.6629,
     # return np.power(x, 4) + np.power(x, 3) - 10*np.square(x) + x + 5
     
-    # objective 3 [0.025*x^2 + sin(x)] ---> x_min = 1.49593, f(x_min) = -1.49593
+    # objective 3 [0.025*x^2 + sin(x)] ---> x_min = 1.49593, f(x_min) = -0.94125366117
 	x_min = -1.49593
 	return 0.025*np.square(x) + np.sin(x)
 
@@ -81,15 +76,14 @@ def main () :
 	c2 = 1.5
 	r1 = np.random.rand ()
 	r2 = np.random.rand ()
+	left = -20 
+	right = 20
+	intervalLength = right - left
 
-	from statistics import mean
-
-	xVan = 40 * np.random.rand(Nx, 1) - 20
-	vVan = 0.4 * np.random.rand(Nx, 1) - 0.2
-	xChaos = 40 * getChaosPoints (Nx, 4) - 20
-	xChaos = np.reshape (xChaos, (-1,1))
-	vChaos = 0.4 * getChaosPoints (Nx, 4) - 0.2
-	vChaos = np.reshape (vChaos, (-1,1))
+	xVan = intervalLength * np.random.rand(Nx, 1) - intervalLength/2
+	vVan = intervalLength/100.0 * np.random.rand(Nx, 1) - intervalLength/(2*100)
+	xChaos = np.reshape (intervalLength * getChaosPoints (Nx, 4) - intervalLength/2, (-1,1))
+	vChaos = np.reshape (intervalLength/100.0 * getChaosPoints (Nx, 4) - intervalLength/(2*100), (-1,1))
 	pbestVan = xVan
 	pbestChaos = xChaos
 
@@ -164,15 +158,19 @@ def main () :
 	    ################################################################################################
 
 	if approx (gbestVan, x_min, 0.1, 0)[0] :
+		currMinVan = True
 		pass
 		#print ("Vanilla correct for gbestVan = " + str(gbestVan))
 	else :
+		currMinVan = False
 		pass
 		#print ("Vanilla incorrect for gbestVan = " + str(gbestVan))
 	if approx (gbestChaos, x_min, 0.1, 0)[0] :
+		currMinChaos = True
 		pass
 		#print ("Chaos correct for gbestChaos = " + str(gbestChaos))
 	else :
+		currMinChaos = False
 		pass
 		#print ("Chaos incorrect for gbestChaos = " + str(gbestChaos))
 
@@ -192,6 +190,45 @@ def main () :
 	cntVan = sum (globMinVan)[0]
 	cntChaos = sum (globMinChaos)[0]
 
+	######################################## Shell outputs #########################################
+	
+	'''
+	if currMinVan :
+		print ("1 " + str(cntVan))
+		sys.exit (1)
+	else :
+		print ("0 " + str(cntVan))
+		sys.exit (0)
+	'''
+
+	'''
+	if currMinChaos :
+		print ("1 " + str(cntChaos))
+		sys.exit (1)
+	else :
+		print ("0 " + str(cntChaos))
+		sys.exit (0)
+	'''
+	'''
+	if currMinVan :
+		print ("1 " + str(xoavgvCache[-1]))
+		sys.exit (1)
+	else :
+		print ("0 " + str(xoavgvCache[-1]))
+		sys.exit (0)
+	'''
+
+	
+	if currMinChaos :
+		print ("1 " + str(xoavgvCache[-1]))
+		sys.exit (1)
+	else :
+		print ("0 " + str(xoavgvCache[-1]))
+		sys.exit (0)
+	
+
+	######################################## Shell outputs #########################################
+
 	#print ("cntVan = " + str(cntVan))
 	if len(otherVanDer) != 0 :
 		pass
@@ -201,22 +238,26 @@ def main () :
 		pass
 		#print ("Others = " + str(otherChaosDer))
 
-	#print ("Vanilla average fitness = " + str(xoavgvCache[-1]))
-	#print ("Chaotic average fitness = " + str(xoavgcCache[-1]))
+	print ("Vanilla average fitness = " + str(xoavgvCache[-1]))
+	print ("Chaotic average fitness = " + str(xoavgcCache[-1]))
 
 	#### Comparing average final fitness value
 	'''
 	if approx (xoavgcCache[-1], xoavgvCache[-1], 0.01, -1) :
 		sys.exit (1)
+	elif (xoavgcCache[-1] < xoavgvCache[-1]) :
+		sys.exit (1)
 	else :
-		sys.exit (0)
+		sys.exit (0) 
 	'''
 
 	#### Anomaly of no. of final chaotic points near gbest being lesser than that of corresponding vanilla
+	'''
 	if approx (xoavgcCache[-1], xoavgvCache[-1], 0.01, -1) and cntChaos < cntVan :
 		sys.exit (1)
 	else :
 		sys.exit (0)
+	'''
 
 if __name__ == '__main__':
 	main()
