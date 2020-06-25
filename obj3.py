@@ -2,10 +2,12 @@ import numpy as np
 import sys
 
 
+import numpy as np
+
 def approx (num, rel, tol, cmpr) :
-	# Check if num is lower than relative and within tolerance
+	# Check if num is lower than relative
 	if cmpr == -1 :
-		return num <= rel and (rel - num)/np.abs(rel) <= tol
+		return (rel - num)/np.abs(rel) <= tol
 
 	# Check absolute difference to relative
 	if cmpr == 0 :
@@ -13,7 +15,7 @@ def approx (num, rel, tol, cmpr) :
 
 	# Check if num is higher than relative
 	if cmpr == 1 :
-		return num >= rel and (num - rel)/np.abs(rel) <= tol
+		return (num - rel)/np.abs(rel) <= tol
 
 x_min = 0
 
@@ -44,26 +46,36 @@ def objDer (x) :
 def logistic (x, r) :
     return r * x * (1 - x) 
 
-def getTimeSeries (length, r) :
-    x0 = 0.01
+def tent (x, mu) :
+    if x <= mu :
+        return x/mu
+    else :
+        return (1-x)/(1-mu)
+
+def getTimeSeries (length, cmap) :
+    x0 = np.random.rand ()
     n = np.arange (1, length+1)
     xs = [x0]
     x = x0
     
     for i in range (1, length) :
-        x = logistic (x, r)
+        if cmap[0] == "logsitic" :
+            x = logistic (x, cmap[1])
+        elif cmap[0] == "tent" :
+            x = tent (x, cmap[1])
+            
         xs.append (x)
         
     xs = np.array (xs)
     return (n, xs)
 
-def getChaosPoints (num, r) :
+def getChaosPoints (num, cmap) :
     if num < 1000 :
         seriesLength = 1000
     else :
         seriesLength = 2*num 
         
-    return getTimeSeries (seriesLength, r)[1][-num:]
+    return getTimeSeries (seriesLength, cmap)[1][-num:]
 
 def main () :
 	# 10, 20, 0.2
@@ -76,14 +88,16 @@ def main () :
 	c2 = 1.5
 	r1 = np.random.rand ()
 	r2 = np.random.rand ()
+	cmap = ["tent", 0.49999]
+	#cmap = ["logistic", 4]
 	left = -20 
 	right = 20
 	intervalLength = right - left
 
 	xVan = intervalLength * np.random.rand(Nx, 1) - intervalLength/2
 	vVan = intervalLength/100.0 * np.random.rand(Nx, 1) - intervalLength/(2*100)
-	xChaos = np.reshape (intervalLength * getChaosPoints (Nx, 4) - intervalLength/2, (-1,1))
-	vChaos = np.reshape (intervalLength/100.0 * getChaosPoints (Nx, 4) - intervalLength/(2*100), (-1,1))
+	xChaos = np.reshape (intervalLength * getChaosPoints (Nx, cmap) - intervalLength/2, (-1,1))
+	vChaos = np.reshape (intervalLength/100.0 * getChaosPoints (Nx, cmap) - intervalLength/(2*100), (-1,1))
 	pbestVan = xVan
 	pbestChaos = xChaos
 
@@ -209,6 +223,7 @@ def main () :
 		print ("0 " + str(cntChaos))
 		sys.exit (0)
 	'''
+
 	'''
 	if currMinVan :
 		print ("1 " + str(xoavgvCache[-1]))
@@ -225,6 +240,7 @@ def main () :
 	else :
 		print ("0 " + str(xoavgvCache[-1]))
 		sys.exit (0)
+	
 	
 
 	######################################## Shell outputs #########################################

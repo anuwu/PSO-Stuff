@@ -21,7 +21,3 @@ then
 fi	
 
 rm -f curr.txt
-
-clear
-sl
-printf "Good morning Saaku!\n"
