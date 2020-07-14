@@ -11,4 +11,4 @@ do
 	cnt=`expr $cnt + $?`
 done
 
-printf "\nChaos finds correct gbest, $cnt out of $1 times\n"
+printf "\nPSO finds correct gbest, $cnt out of $1 times\n"

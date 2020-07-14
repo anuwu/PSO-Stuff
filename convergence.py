@@ -76,13 +76,9 @@ def getChaosPoints (num, cmap) :
 		
 	return getTimeSeries (seriesLength, cmap)[1][-num:]
 
-def main () :
-	# 10, 20, 0.2
-	# 25, 20, 0.2
-	# 50, 100, 1
-	# 100, 1000, 10
+def main (inertia) :
 	Nx = 25
-	w = 0.1
+	w = inertia
 	c1 = 2
 	c2 = 2
 	r1 = np.random.rand ()
@@ -221,33 +217,16 @@ def main () :
 		print ("0 " + str(cntVan))
 		sys.exit (0)
 	'''
-	
-	
+
+
 	if currMinChaos :
 		print ("1 " + str(cntChaos))
 		sys.exit (1)
 	else :
 		print ("0 " + str(cntChaos))
 		sys.exit (0)
-	
-
-	'''
-	if currMinVan :
-		print ("1 " + str(xoavgvCache[-1]))
-		sys.exit (1)
-	else :
-		print ("0 " + str(xoavgvCache[-1]))
-		sys.exit (0)
-	'''
-	
-	'''
-	if currMinChaos :
-		print ("1 " + str(xoavgvCache[-1]))
-		sys.exit (1)
-	else :
-		print ("0 " + str(xoavgvCache[-1]))
-		sys.exit (0)
-	'''
+		
 
 if __name__ == '__main__':
-	main()
+	weight = float(sys.argv[1])
+	main(weight)
