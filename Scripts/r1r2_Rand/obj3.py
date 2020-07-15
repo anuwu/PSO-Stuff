@@ -222,14 +222,14 @@ def main () :
 		sys.exit (0)
 	'''
 	
-	
+	'''
 	if currMinChaos :
 		print ("1 " + str(cntChaos))
 		sys.exit (1)
 	else :
 		print ("0 " + str(cntChaos))
 		sys.exit (0)
-	
+	'''
 
 	'''
 	if currMinVan :
