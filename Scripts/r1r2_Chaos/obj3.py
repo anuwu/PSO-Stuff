@@ -1,7 +1,8 @@
 import numpy as np
+from scipy.integrate import odeint
+from statistics import mean
+import matplotlib.pyplot as plt
 import sys
-
-import numpy as np
 
 def approx (num, rel, tol, cmpr) :
 	# Check if num is lower than relative
@@ -17,20 +18,26 @@ def approx (num, rel, tol, cmpr) :
 		return (num - rel)/np.abs(rel) <= tol
 
 x_min = 0
+minimas = []
+maximas = []
 
 def obj (x) :
-	global x_min
-	# objective 1  [x^2] ---> x_min = 0, f(x_min) = 0
-	# x_min = 0
-	# return np.square (x)
-	
-	# objective 2 [x^4 + x^3 - 10x^2 + x + 5] ---> x_min = -2.6629, f(x_min) = -37.1732
-	# x_min = -2.6629,
-	# return np.power(x, 4) + np.power(x, 3) - 10*np.square(x) + x + 5
-	
-	# objective 3 [0.025*x^2 + sin(x)] ---> x_min = 1.49593, f(x_min) = -0.94125366117
-	x_min = -1.49593
-	return 0.025*np.square(x) + np.sin(x)
+    global x_min
+    global minimas
+    global maximas
+    # objective 1  [x^2] ---> x_min = 0, f(x_min) = 0
+    # x_min = 0
+    # return np.square (x)
+    
+    # objective 2 [x^4 + x^3 - 10x^2 + x + 5] ---> x_min = -2.6629, f(x_min) = -37.1732
+    # x_min = -2.6629,
+    # return np.power(x, 4) + np.power(x, 3) - 10*np.square(x) + x + 5
+    
+    # objective 3 [0.025*x^2 + sin(x)] ---> x_min = 1.49593, f(x_min) = -0.94125366117
+    x_min = -1.49593
+    minimas = [-19.1433, -13.4028, -7.47114, 4.48616, 10.446, 16.324]
+    maximas = [-18.4538, -11.6152, -4.96317, 1.65357, 8.28087, 14.984]
+    return 0.025*np.square(x) + np.sin(x)
 
 def objDer (x) :
 	# Objective 1
@@ -42,56 +49,95 @@ def objDer (x) :
 	# Objective 3
 	return 0.05*x + np.cos(x)
 
-def logistic (x, r) :
-	return r * x * (1 - x) 
+def logisticMap (x, r) :
+    return r * x * (1 - x) 
 
-def tent (x, mu) :
-	if x <= mu :
-		return x/mu
-	else :
-		return (1-x)/(1-mu)
+def tentMap (x, mu) :
+    if x <= mu :
+        return x/mu
+    else :
+        return (1-x)/(1-mu)
+
+def lorenzFlow (initCond, param, t_end, length) :
+    def lorenz (X, t, sigma, beta, rho) :
+        x, y, z = X
+        dXdt = [sigma*(y - x), x*(rho - z) - y, x*y - beta*z]
+        return dXdt
+    
+    X0 = initCond
+    t = np.linspace (0, t_end, length)
+    sol = odeint (lorenz, X0, t, args = param)
+    return sol
 
 class chaosGenerator :
+    def setLorenz (self, sol) :
+        self.x0 = sol[-1,0]
+        self.y0 = sol[-1,1]
+        self.z0 = sol[-1,2]
+    
     def __init__ (self, cmap) :
-        iterate = 1000 + int(np.random.rand() * 10000)
         
-        self.x0 = 0.01
         self.cmap = cmap
-        for i in range (1, iterate) :
-            if cmap[0] == "logistic" :
-                self.x0 = logistic (self.x0, cmap[1])
-            elif cmap[0] == "tent" :
-                self.x0 = tent (self.x0, cmap[1])
         
-        
+        if cmap[0] == "logistic" or cmap[0] == "tent" :
+            self.x0 = 0.01
+            iterate = 1000 + int(np.random.rand() * 10000)
+            funcMap = logisticMap if cmap[0] == "logistic" else tentMap
+            for i in range (1, iterate) :
+                self.x0 = funcMap (self.x0, cmap[1])
+                
+        elif cmap[0] == "lorenz" :
+            self.x0 = np.random.rand ()
+            self.y0 = np.random.rand ()
+            self.z0 = np.random.rand ()
+            sol = lorenzFlow ([self.x0, self.y0, self.z0], cmap[1], 1000, 100000)
+            self.xmin = min(sol[:,0])
+            self.xmax = max(sol[:,0])
+            self.setLorenz (sol)
+                
     def getTimeSeries (self, length) :
-        n = np.arange (1, length+1)
-        xs = [self.x0]
-        x = self.x0
+        if self.cmap[0] == "logistic" or self.cmap[0] == "tent" :
+            n = np.arange (1, length + 1)
+            xs = [self.x0]
+            x = self.x0
+            
+            funcMap = logisticMap if self.cmap[0] == "logistic" else tentMap
+            for i in range (1, length) :
+                x = funcMap (x, self.cmap[1])
+                xs.append (x)
 
-        for i in range (1, length) :
-            if self.cmap[0] == "logistic" :
-                x = logistic (x, self.cmap[1])
-            elif self.cmap[0] == "tent" :
-                x = tent (x, self.cmap[1])
-
-            xs.append (x)
-
-        xs = np.array (xs)
-        self.x0 = xs[-1]
-        
-        return (n, xs)
+            xs = np.array (xs)
+            self.x0 = xs[-1]
+            xs = np.reshape (xs, (-1, 1))
+            
+        elif self.cmap[0] == "lorenz" :
+            sol = lorenzFlow ([self.x0, self.y0, self.z0], self.cmap[1], length, length * 100)
+            inds = np.arange (0, length*100, 100).astype (int)
+            xs = np.reshape (sol[:,0][inds], (-1, 1))
+            xs = (xs - self.xmin)/(self.xmax - self.xmin)
+            
+            self.setLorenz (sol)
+            
+        return xs
 
     def getChaosPoints (self, num) :
-        return np.reshape (self.getTimeSeries (num)[1], (-1, 1))
+        return self.getTimeSeries (num)
     
     def chaosRand (self) :
-        if self.cmap[0] == "logistic" :
-            self.x0 = logistic (self.x0, cmap[1])
-        elif self.cmap[0] == "tent" :
-            self.x0 = tent (self.x0, cmap[1])
+        if self.cmap[0] == "logistic" or self.cmap[0] == "tent" :
+            funcMap = logisticMap if self.cmap[0] == "logistic" else tentMap
+            self.x0 = funcMap (self.x0, self.cmap[1])
             
-        return self.x0
+            return self.x0
+        elif self.cmap[0] == "lorenz" :
+            sol = lorenzFlow ([self.x0, self.y0, self.z0], self.cmap[1], 0.02, 2)
+            self.setLorenz (sol)
+            
+            retx0 = (self.x0 - self.xmin)/(self.xmax - self.xmin)
+            retx0 = 0 if retx0 < 0 else (1 if retx0 > 1 else retx0) 
+            
+            return retx0
+
 
 def main (modbool) :
 	# 10, 20, 0.2
@@ -104,7 +150,8 @@ def main (modbool) :
 	c2 = 2
 
 	#cmap = ["tent", 0.49999]
-	cmap = ["logistic", 4]
+	#cmap = ["logistic", 4]
+	cmap = ["lorenz", (10, 8.0/3, 28)]
 	chaosMan = chaosGenerator (cmap)
 
 	numIter = 50
@@ -154,8 +201,10 @@ def main (modbool) :
 			if (obj(gbestVanNew) < obj(gbestVan)) :
 				gbestVan = gbestVanNew
 		else :
-			r1c = chaosMan.getChaosPoints (Nx)
-			r2c = chaosMan.getChaosPoints (Nx)
+			# r1c = chaosMan.getChaosPoints (Nx)
+			# r2c = chaosMan.getChaosPoints (Nx)
+			r1c = np.random.rand (Nx, 1)
+			r2c = np.random.rand (Nx, 1)
 			vChaos = w*vChaos + c1*r1c*(pbestChaos - xChaos) + c2*r2c*(gbestChaos - xChaos)
 			xChaos = xChaos + vChaos
 			less = obj(xChaos) < obj(pbestChaos)

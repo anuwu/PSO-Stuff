@@ -87,7 +87,7 @@ def main () :
 	c2 = 2
 	r1 = np.random.rand ()
 	r2 = np.random.rand ()
-	cmap = ["tent", 0.49999]
+	#cmap = ["tent", 0.49999]
 	#cmap = ["logistic", 4]
 	left = -20 
 	right = 20
