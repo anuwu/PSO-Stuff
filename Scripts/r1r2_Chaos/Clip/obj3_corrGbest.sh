@@ -7,7 +7,7 @@ while [ $i -lt $2 ]
 do
 	i=`expr $i + 1`
 	printf "$i "
-	python obj3.py $1
+	python obj3.py $1 >> /dev/null
 	cnt=`expr $cnt + $?`
 done
 

@@ -145,19 +145,20 @@ def main (modbool) :
 	# 50, 100, 1
 	# 100, 1000, 10
 	Nx = 25
-	w = 0.1
+	w = 0.5
 	c1 = 2
 	c2 = 2
 
-	#cmap = ["tent", 0.49999]
-	#cmap = ["logistic", 4]
-	cmap = ["lorenz", (10, 8.0/3, 28)]
+	# cmap = ["tent", 0.49999]
+	# cmap = ["logistic", 4]
+	# cmap = ["lorenz", (10, 8.0/3, 28)]
 	chaosMan = chaosGenerator (cmap)
 
 	numIter = 50
 	left = -20 
 	right = 20
 	intervalLength = right - left
+	vmax = intervalLength/10.0
 
 	if modbool :
 		xVan = intervalLength * np.random.rand(Nx, 1) - intervalLength/2
@@ -193,20 +194,30 @@ def main (modbool) :
 		if modbool :
 			r1 = np.random.rand (Nx, 1)
 			r2 = np.random.rand (Nx, 1)
+
 			vVan = w*vVan + c1*r1*(pbestVan - xVan) + c2*r2*(gbestVan - xVan)
+			vabsVan = np.abs (vVan)
+			vanClip = np.ones (shape = vVan.shape)
+			vanClip[vabsVan > vmax] = vmax/vabsVan[vabsVan > vmax]
+			vVan = vVan * vanClip	
 			xVan = xVan + vVan
+
 			less = obj(xVan) < obj(pbestVan)
 			pbestVan = less * xVan + np.invert (less) * pbestVan
 			gbestVanNew = min (xVan , key = lambda x : obj(x))
 			if (obj(gbestVanNew) < obj(gbestVan)) :
 				gbestVan = gbestVanNew
 		else :
-			# r1c = chaosMan.getChaosPoints (Nx)
-			# r2c = chaosMan.getChaosPoints (Nx)
-			r1c = np.random.rand (Nx, 1)
-			r2c = np.random.rand (Nx, 1)
+			r1c = chaosMan.getChaosPoints (Nx)
+			r2c = chaosMan.getChaosPoints (Nx)
+
 			vChaos = w*vChaos + c1*r1c*(pbestChaos - xChaos) + c2*r2c*(gbestChaos - xChaos)
+			vabsChaos = np.abs (vChaos)
+			chaosClip = np.ones (shape = vChaos.shape)
+			chaosClip[vabsChaos > vmax] = vmax/vabsChaos[vabsChaos > vmax]
+			vChaos = vChaos * chaosClip
 			xChaos = xChaos + vChaos
+
 			less = obj(xChaos) < obj(pbestChaos)
 			pbestChaos = less * xChaos + np.invert (less) * pbestChaos
 			gbestChaosNew = min (xChaos , key = lambda x : obj(x))	
@@ -237,17 +248,17 @@ def main (modbool) :
 	if modbool :
 		if approx (gbestVan, x_min, 0.1, 0)[0] :
 			currMinVan = True
-			#sys.exit (1)
+			sys.exit (1)
 		else :
 			currMinVan = False
-			#sys.exit (0)
+			sys.exit (0)
 	else :
 		if approx (gbestChaos, x_min, 0.1, 0)[0] :
 			currMinChaos = True
-			#sys.exit (1)
+			# sys.exit (1)
 		else :
 			currMinChaos = False
-			#sys.exit (0)
+			# sys.exit (0)
 
 	if modbool :
 		globMinVan = approx (xVan, gbestVan, 0.1, 0)
