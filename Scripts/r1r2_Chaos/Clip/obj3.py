@@ -297,10 +297,10 @@ def main (modbool) :
 			sys.exit (0)
 		
 		if currMinChaos :
-			print ("1 " + str(xoavgvCache[-1]))
+			print ("1 " + str(xoavgcCache[-1]))
 			sys.exit (1)
 		else :
-			print ("0 " + str(xoavgvCache[-1]))
+			print ("0 " + str(xoavgcCache[-1]))
 			sys.exit (0)
 
 if __name__ == '__main__':
