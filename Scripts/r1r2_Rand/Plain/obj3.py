@@ -139,19 +139,14 @@ def main () :
 		xChaos = xChaos + vChaos
 		
 		less = obj(xVan) < obj(pbestVan)
-		pbestVan = less * xVan + np.invert (less) * pbestVan
+		pbestVan[less] = xVan[less]
 		less = obj(xChaos) < obj(pbestChaos)
-		pbestChaos = less * xChaos + np.invert (less) * pbestChaos
+		pbestChaos[less] = xChaos[less]
 		
 		################################################################################################
-		gbestVanNew = min (xVan , key = lambda x : obj(x))
-		gbestChaosNew = min (xChaos , key = lambda x : obj(x))
+		gbestVan = min (pbestVan, key = lambda x : obj(x))
+		gbestChaos = min (pbestChaos, key = lambda x : obj(x))
 
-		if (obj(gbestVanNew) < obj(gbestVan)) :
-			gbestVan = gbestVanNew
-		if (obj(gbestChaosNew) < obj(gbestChaos)) :
-			gbestChaos = gbestChaosNew
-		
 		# Appending to list for plot 1
 		gbvCache.append (gbestVan)
 		gbcCache.append (gbestChaos)

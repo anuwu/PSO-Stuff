@@ -101,10 +101,8 @@ def main (modbool, beta1) :
 			xVan = xVan + vVan
 
 			less = obj(xVan) < obj(pbestVan)
-			pbestVan = less * xVan + np.invert (less) * pbestVan
-			gbestVanNew = min (xVan , key = lambda x : obj(x))
-			if (obj(gbestVanNew) < obj(gbestVan)) :
-				gbestVan = gbestVanNew
+			pbestVan[less] = xVan[less] 
+			gbestVan = min (pbestVan , key = lambda x : obj(x))
 		else :
 			r1m = np.random.rand (Nx, 1)
 			r2m = np.random.rand (Nx, 1)
@@ -114,10 +112,8 @@ def main (modbool, beta1) :
 			xMom = xMom + vMom
 
 			less = obj(xMom) < obj(pbestMom)
-			pbestMom = less * xMom + np.invert (less) * pbestMom
-			gbestMomNew = min (xMom , key = lambda x : obj(x))	
-			if (obj(gbestMomNew) < obj(gbestMom)) :
-				gbestMom = gbestMomNew
+			pbestMom[less] = xMom[less] 
+			gbestMom = min (pbestMom , key = lambda x : obj(x))	
 		
 		################################################################################################
 		

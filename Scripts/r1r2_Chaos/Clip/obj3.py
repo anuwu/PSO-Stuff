@@ -196,33 +196,29 @@ def main (modbool) :
 			r2 = np.random.rand (Nx, 1)
 
 			vVan = w*vVan + c1*r1*(pbestVan - xVan) + c2*r2*(gbestVan - xVan)
-			vabsVan = np.abs (vVan)
-			vanClip = np.ones (shape = vVan.shape)
-			vanClip[vabsVan > vmax] = vmax/vabsVan[vabsVan > vmax]
-			vVan = vVan * vanClip	
+                        vVanCross = np.abs(vVan) > vmax
+                        sgn = np.logical_and(vVan < 0, vVanCross)
+                        vVan[vVanCross] = vmax
+                        vVan[sgn] *= -1
 			xVan = xVan + vVan
 
 			less = obj(xVan) < obj(pbestVan)
-			pbestVan = less * xVan + np.invert (less) * pbestVan
-			gbestVanNew = min (xVan , key = lambda x : obj(x))
-			if (obj(gbestVanNew) < obj(gbestVan)) :
-				gbestVan = gbestVanNew
+			pbestVan[less] = xVan[less]
+			gbestVan = min (pbestVan , key = lambda x : obj(x))
 		else :
 			r1c = chaosMan.getChaosPoints (Nx)
 			r2c = chaosMan.getChaosPoints (Nx)
 
 			vChaos = w*vChaos + c1*r1c*(pbestChaos - xChaos) + c2*r2c*(gbestChaos - xChaos)
-			vabsChaos = np.abs (vChaos)
-			chaosClip = np.ones (shape = vChaos.shape)
-			chaosClip[vabsChaos > vmax] = vmax/vabsChaos[vabsChaos > vmax]
-			vChaos = vChaos * chaosClip
+                        vChaosCross = np.abs (vChaos) > vmax
+                        sgn = np.logical_and (vChaos < 0, vChaosCross)
+                        vChaos[vChaosCross] = vmax
+                        vChaos[sgn] *= -1
 			xChaos = xChaos + vChaos
 
 			less = obj(xChaos) < obj(pbestChaos)
-			pbestChaos = less * xChaos + np.invert (less) * pbestChaos
-			gbestChaosNew = min (xChaos , key = lambda x : obj(x))	
-			if (obj(gbestChaosNew) < obj(gbestChaos)) :
-				gbestChaos = gbestChaosNew
+			pbestChaos[less] = xChaos[less]
+			gbestChaos = min (pbestChaos , key = lambda x : obj(x))	
 		
 		################################################################################################
 		

@@ -1,4 +1,4 @@
-cimport numpy as np
+import numpy as np
 from scipy.integrate import odeint
 from statistics import mean
 import matplotlib.pyplot as plt
@@ -196,20 +196,16 @@ def main (modbool) :
 			vVan = w*vVan + c1*r1*(pbestVan - xVan) + c2*r2*(gbestVan - xVan)
 			xVan = xVan + vVan
 			less = obj(xVan) < obj(pbestVan)
-			pbestVan = less * xVan + np.invert (less) * pbestVan
-			gbestVanNew = min (xVan , key = lambda x : obj(x))
-			if (obj(gbestVanNew) < obj(gbestVan)) :
-				gbestVan = gbestVanNew
+			pbestVan[less] = xVan[less] 
+			gbestVan = min (pbestVan , key = lambda x : obj(x))
 		else :
 			r1c = chaosMan.getChaosPoints (Nx)
 			r2c = chaosMan.getChaosPoints (Nx)
 			vChaos = w*vChaos + c1*r1c*(pbestChaos - xChaos) + c2*r2c*(gbestChaos - xChaos)
 			xChaos = xChaos + vChaos
 			less = obj(xChaos) < obj(pbestChaos)
-			pbestChaos = less * xChaos + np.invert (less) * pbestChaos
-			gbestChaosNew = min (xChaos , key = lambda x : obj(x))	
-			if (obj(gbestChaosNew) < obj(gbestChaos)) :
-				gbestChaos = gbestChaosNew
+			pbestChaos[less] = xChaos[less] 
+			gbestChaos = min (pbestChaos , key = lambda x : obj(x))	
 		
 		################################################################################################
 		
