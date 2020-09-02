@@ -196,9 +196,8 @@ def main (modbool) :
 			r2 = np.random.rand (Nx, 1)
 
 			vVan = w*vVan + c1*r1*(pbestVan - xVan) + c2*r2*(gbestVan - xVan)
-                        vVanCross = np.abs(vVan) > vmax
-                        sgn = np.logical_and(vVan < 0, vVanCross)
-                        vVan[vVanCross] = vmax
+                        sgn = vVan < 0
+                        vVan = np.minimum (vmax, np.abs (vVan))
                         vVan[sgn] *= -1
 			xVan = xVan + vVan
 
@@ -210,9 +209,8 @@ def main (modbool) :
 			r2c = chaosMan.getChaosPoints (Nx)
 
 			vChaos = w*vChaos + c1*r1c*(pbestChaos - xChaos) + c2*r2c*(gbestChaos - xChaos)
-                        vChaosCross = np.abs (vChaos) > vmax
-                        sgn = np.logical_and (vChaos < 0, vChaosCross)
-                        vChaos[vChaosCross] = vmax
+                        sgn = vChaos < 0
+                        vChaos = np.minimum (vmax, np.abs (vChaos))
                         vChaos[sgn] *= -1
 			xChaos = xChaos + vChaos
 
