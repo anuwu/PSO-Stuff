@@ -28,6 +28,7 @@ class ChaosGenerator () :
     # > gens    - Number of independent internal chaotic generators. Two by
     #           default for chaotic pso
     ######################################################################
+
         self.oshape = oshape
 
         ######################################################################
@@ -46,9 +47,7 @@ class ChaosGenerator () :
                     (self.gshape)
 
     def getCgens (self) :
-    ######################################################################
     # Returns a copy of the internal generators
-    ######################################################################
         return np.copy (self.cgens)
 
     def chaosPoints (self, gno=0) :
@@ -61,6 +60,7 @@ class ChaosGenerator () :
     #       - If !=0 means to evolve a particular generator (indexed from 1) rand
     #       return a matrix of shape (Np, D)
     ######################################################################
+
         if gno != 0 :
             if self.cascade :
                 # Evolve per particle
@@ -84,9 +84,7 @@ class ChaosGenerator () :
         pass
 
     def getGen (shape, gentype) :
-    ######################################################################
     # Returns a generator of the given shape and underlying map
-    ######################################################################
         return (lambda s : lambda i : ChaosGenerator.cgen[gentype](s).chaosPoints(i))(shape)
 
 
@@ -102,6 +100,7 @@ class Logistic (ChaosGenerator) :
     #
     # Rest is defined in the parent class
     ######################################################################
+
         ChaosGenerator.__init__(self, oshape, None, cascade, gens)
         self.r = r
 
@@ -143,9 +142,7 @@ class Lorenz (ChaosGenerator) :
     lims = {}
 
     def lorenz (X, t, sigma, beta, rho) :
-    ######################################################################
     # lorenz differential equation needed by scipy odeint
-    ######################################################################
         x, y, z = X
         dXdt = [sigma*(y-x), x*(rho-z) - y, x*y - beta*z]
         return dXdt
@@ -171,6 +168,7 @@ class Lorenz (ChaosGenerator) :
     #
     # Rest is defined in the parent class
     ######################################################################
+
         ChaosGenerator.__init__ (self, oshape, oshape+(3,), cascade, gens)
         self.params = params
         self.comp = comp
@@ -188,9 +186,7 @@ class Lorenz (ChaosGenerator) :
                 # Argument to lambda - (ith generator jth cdim, min of jth cdim, max of jth cdim)
 
     def evolveT (self, gind, T=1) :
-    ######################################################################
     # Evolves the lorenz map for T timesteps and sets the internal generator
-    ######################################################################
 
         for pt in np.ndindex(self.gshape[:-1]) :
         # Per index in (Np, D)
@@ -198,9 +194,7 @@ class Lorenz (ChaosGenerator) :
                                           np.arange(0,self.h*(T+1),self.h), args=self.params)[-1]
 
     def evolve (self, gind) :
-    ######################################################################
     # Evolves the internal generators 1 timestep
-    ######################################################################
 
         ######################################################################
         # If the limits defined in the dict 'lims' are exceeded, then
@@ -221,6 +215,7 @@ class Lorenz (ChaosGenerator) :
         self.evolveT (gind)
         return ret
 
+# Used by CPSO for generating swarms
 ChaosGenerator.cgen = {
 "Log" : Logistic,
 "Lor" : Lorenz,
