@@ -1,7 +1,7 @@
 import numpy as np
 import chaosGen as cg
 
-class PSO_Optimizer () :
+class CPSO_Optimizer () :
     """Class from the chaotic particle swarm optimizer
     Can also work as a vanilla PSO optimizer"""
 
@@ -19,71 +19,71 @@ class PSO_Optimizer () :
     pbcache = []
     gbcache = []
 
-    def getSwarm (shape, llim, rlim, initgen="", randgen="") :
-        """Returns a swarm of particles which PSO uses
-
-        shape   - (Np, D)
-        llim    - Left limits for each dimension
-        rlim    - Right limits for each dimension
-        initgen - Number generator for initialising particles
-                - Can be basic numpy.random or chaotic generator
-        randgen - Number generator for r1, r2 of PSO
-                - Can be basic numpy.random or chaotic generator"""
+    def getSwarm (shape, llim, rlim, initgen="", randgen="", cache=False) :
+        """
+        Returns a swarm of particles which PSO uses
+            shape   - (Np, D)
+            llim    - Left limits for each dimension
+            rlim    - Right limits for each dimension
+            initgen - Number generator for initialising particles
+                    - Can be basic numpy.random or chaotic generator
+            randgen - Number generator for r1, r2 of PSO
+                    - Can be basic numpy.random or chaotic generator
+        """
 
         # Dimensions of the swarm must be the no. of dimensions in the boundary
         assert shape[1] == len(llim) == len(rlim)
 
         # String describing chaotic map --> Generator
         gs = lambda st : (lambda i : np.random.random_sample (shape)) if st == ""\
-                                                                    else cg.ChaosGenerator.getGen (shape, st)
+                                                                    else cg.ChaosGenerator.getGen(shape, st)
 
-        # PSO_Optimizer object ready to be initialised as it's supplied an objective function
-        return lambda o : PSO_Optimizer (o, llim, rlim,
+        # CPSO_Optimizer object ready to be initialised as it's supplied an objective function
+        return lambda o : CPSO_Optimizer(o, llim, rlim,
                                              gs(initgen),
-                                             gs(randgen))
+                                             gs(randgen),
+                                             cache=cache)
 
     def resetCache () :
-        """"Resets cache to empty. Called before optimize()"""
-
-        PSO_Optimizer.pcache = []
-        PSO_Optimizer.vcache = []
-        PSO_Optimizer.mcache = []
-        PSO_Optimizer.pbcache = []
-        PSO_Optimizer.gbcache = []
+        """" Resets cache to empty. Called before optimize() """
+        CPSO_Optimizer.pcache = []
+        CPSO_Optimizer.vcache = []
+        CPSO_Optimizer.mcache = []
+        CPSO_Optimizer.pbcache = []
+        CPSO_Optimizer.gbcache = []
 
     def appendCache (p, v, m, pb, gb) :
-        """Called every iteration of optimize()"""
-
-        PSO_Optimizer.pcache.append (np.copy(p))
-        PSO_Optimizer.vcache.append (np.copy(v))
-        PSO_Optimizer.mcache.append (np.copy(m))
-        PSO_Optimizer.pbcache.append (np.copy(pb))
-        PSO_Optimizer.gbcache.append (np.copy(gb))
+        """ Called every iteration of optimize() """
+        CPSO_Optimizer.pcache.append (np.copy(p))
+        CPSO_Optimizer.vcache.append (np.copy(v))
+        CPSO_Optimizer.mcache.append (np.copy(m))
+        CPSO_Optimizer.pbcache.append (np.copy(pb))
+        CPSO_Optimizer.gbcache.append (np.copy(gb))
 
     def numpifyCache () :
-        """Sets cache list in numpy format. Called before exit of optimize()"""
-
-        PSO_Optimizer.pcache = np.array (PSO_Optimizer.pcache)
-        PSO_Optimizer.vcache = np.array (PSO_Optimizer.vcache)
-        PSO_Optimizer.mcache = np.array (PSO_Optimizer.mcache)
-        PSO_Optimizer.pbcache = np.array (PSO_Optimizer.pbcache)
-        PSO_Optimizer.gbcache = np.array (PSO_Optimizer.gbcache)
+        """ Sets cache list in numpy format. Called before exit of optimize() """
+        CPSO_Optimizer.pcache = np.array (CPSO_Optimizer.pcache)
+        CPSO_Optimizer.vcache = np.array (CPSO_Optimizer.vcache)
+        CPSO_Optimizer.mcache = np.array (CPSO_Optimizer.mcache)
+        CPSO_Optimizer.pbcache = np.array (CPSO_Optimizer.pbcache)
+        CPSO_Optimizer.gbcache = np.array (CPSO_Optimizer.gbcache)
 
     def callback (i, iters) :
-        """Callback function for the optimization loop. Updates in increment
-        of 20%"""
-        if i in (l:=PSO_Optimizer.callbackIters) :
+        """ Callback function for the optimization loop. Updates in increment of 20% """
+        if i in (l:=CPSO_Optimizer.callbackIters) :
             print ("\rOptimizing : {}%".format((l.index(i)+1)*20), end="")
 
-    def __init__ (self, obj, llim, rlim, initer, rander, vrat=0.1) :
-        """ Constructor of the PSO Optimizer with limits and random
+    def __init__ (self, obj, llim, rlim, initer, rander, vrat=0.1, cache=False) :
+        """
+        Constructor of the PSO Optimizer with limits and random
         number generators
             obj         - Objective function
             llim        - Left boundaries
             rlim        - Right boundaries
             initer      - Position and velocity initialiser
             rander      - r1, r2 generator
-            vrat        - Maximum velocity ratio dimensions used for clipping"""
+            vrat        - Maximum velocity ratio dimensions used for clipping
+        """
 
         self.obj = obj
         self.llim = llim
@@ -94,9 +94,13 @@ class PSO_Optimizer () :
 
         # Defined as 'vrat' times the search space per dimension
         self.vmax = vrat*(rlim - llim).reshape(1,-1)
+        self.cache = cache
 
     def initParticles (self) :
-        """Initialises particle position and velocity. Called at beginning of optimize()"""
+        """
+        Initialises particle position and velocity.
+        Called at beginning of optimize()
+        """
 
         # The only way to find the dimension of the swarm
         D = len(self.llim)
@@ -110,7 +114,7 @@ class PSO_Optimizer () :
                               for ind, l, r in zip(range(0,D), self.llim, self.rlim)]).transpose()
 
     def vclip (self) :
-        """Clips and scales down the velocity according to 'vmax'"""
+        """ Clips and scales down the velocity according to 'vmax' """
 
         #####################################################################
         # for particle in swarm :
@@ -123,9 +127,11 @@ class PSO_Optimizer () :
                         (np.max(np.abs(self.velocity)/(self.vmax), axis=1, keepdims=True))
 
     def ipcd (self, alpha=1.2) :
-        """Check 'Boundary Handling Approaches in Particle Swarm Optimization'
+        """
+        Check 'Boundary Handling Approaches in Particle Swarm Optimization'
         by Padhye et. al.
-        Mutates object state"""
+        Mutates object state
+        """
 
         part = self.particles + self.velocity
 
@@ -165,20 +171,22 @@ class PSO_Optimizer () :
         self.velocity[leftRight] *= -1
 
     def optimize (self, c1=2, c2=2, alpha=1.2, beta=0.9, iters=1000) :
-        """Performs the PSO optimization loop
+        """
+        Performs the PSO optimization loop
         Arguments are default PSO parameters
-        Returns the optimum found, and lambda function for approximate gradient"""
+        Returns the optimum found, and lambda function for approximate gradient
+        """
 
         # Reset class cache
-        PSO_Optimizer.callbackIters = [np.floor(x*iters) for x in [0.2, 0.4, 0.6, 0.8]]
-        PSO_Optimizer.resetCache()
+        CPSO_Optimizer.callbackIters = [np.floor(x*iters) for x in [0.2, 0.4, 0.6, 0.8]]
+        if self.cache : CPSO_Optimizer.resetCache()
         self.initParticles ()
         pbest = self.particles
         momentum = np.zeros (shape=pbest.shape)
         gbest = min (pbest , key = lambda x : self.obj(x.reshape(1,-1))[0])
 
         # Initial append to class cache
-        PSO_Optimizer.appendCache (self.particles, self.velocity, momentum, pbest, gbest)
+        if self.cache : CPSO_Optimizer.appendCache (self.particles, self.velocity, momentum, pbest, gbest)
 
         ######################################################################
         # MAIN OPTIMIZATION LOOP
@@ -206,10 +214,10 @@ class PSO_Optimizer () :
             gbest = min (pbest , key = lambda x : self.obj(x.reshape(1,-1))[0])
 
             # Append to cache after updating particles, velocities, pbest and gbest
-            PSO_Optimizer.appendCache (self.particles, self.velocity, momentum, pbest, gbest)
-            PSO_Optimizer.callback (i, iters)
+            if self.cache : CPSO_Optimizer.appendCache (self.particles, self.velocity, momentum, pbest, gbest)
+            CPSO_Optimizer.callback (i, iters)
 
         # Convert cache list to numpy ndarray
-        PSO_Optimizer.numpifyCache ()
+        if self.cache : CPSO_Optimizer.numpifyCache ()
 
         return gbest, lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta))

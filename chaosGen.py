@@ -2,12 +2,20 @@ import numpy as np
 from scipy.integrate import odeint
 
 class ChaosGenerator () :
-    """ Base class for the chaotic generator
+    """
+    Base class for the chaotic generator
     Contains functions for generating chaotic numbers and subsequently
-    evolving the states of the internal generators """
+    evolving the states of the internal generators
+    """
+
+    def getGen (shape, gentype) :
+        """Returns a generator of the given shape and underlying map"""
+
+        return (lambda s : lambda i : ChaosGenerator.cgen[gentype](s).chaosPoints(i))(shape)
 
     def __init__ (self, oshape, gshape=None, cascade=True, gens=2) :
-        """ Child classes use this constructor to initialise essential parameters
+        """
+        Child classes use this constructor to initialise essential parameters
         and the internal generators
             oshape  - Shape that object owner uses
             gshape  - Internal shape (per generator) as the chaotic map/flow can
@@ -20,7 +28,8 @@ class ChaosGenerator () :
                    to the previous one via the chaotic map. Every dimension is
                    independent of the other, however!
             gens    - Number of independent internal chaotic generators. Two by
-                   default for chaotic pso """
+                   default for chaotic pso
+        """
 
         self.oshape = oshape
 
@@ -40,19 +49,20 @@ class ChaosGenerator () :
                     (self.gshape)
 
     def getCgens (self) :
-        """Returns a copy of the internal generators"""
-
+        """ Returns a copy of the internal generators """
         return np.copy (self.cgens)
 
     def chaosPoints (self, gno=0) :
-        """Returns numbers based on the underlying chaotic map/flow and depending
+        """
+        Returns numbers based on the underlying chaotic map/flow and depending
         on the value of gno
             gno - If ==0 means to evolve all generators and return them as a matrix of
                 shape (gens, Np, D)
                 - If !=0 means to evolve a particular generator (indexed from 1) rand
-                return a matrix of shape (Np, D)"""
+                return a matrix of shape (Np, D)
+        """
 
-        if gno != 0 :
+        if gno :
             if self.cascade :
                 # Evolve per particle
                 return np.array ([
@@ -63,35 +73,27 @@ class ChaosGenerator () :
         else :
             # Evolve per generator (independent of 'cascade') --> Recursive call
             return np.array ([
-                self.chaosPoints (i+1) for i in range(self.gens)
+                self.chaosPoints(i+1) for i in range(self.gens)
             ])
-
-    def evolve (self) :
-        """Action for a particular map/flow is defined in the chaotic child
-        classes. In general, the internal generator state is returned and
-        then they are evolved for one timestep"""
-
-        pass
-
-    def getGen (shape, gentype) :
-        """Returns a generator of the given shape and underlying map"""
-
-        return (lambda s : lambda i : ChaosGenerator.cgen[gentype](s).chaosPoints(i))(shape)
 
 
 class Logistic (ChaosGenerator) :
-    """Logistic map --> f(x) = r*x*(1-x)
-    r = 4 for full chaos"""
+    """
+    Logistic map --> f(x) = r*x*(1-x)
+    r = 4 for full chaos
+    """
 
     def __init__ (self, oshape, cascade=True, r=4, gens=2) :
-        """r - logistic bifurcation parameter
-        Rest is defined in the parent class"""
+        """
+        r - logistic bifurcation parameter
+        Rest is defined in the parent class
+        """
 
         ChaosGenerator.__init__(self, oshape, None, cascade, gens)
         self.r = r
 
     def evolve (self, gind) :
-        """Evolves according to the logistic map"""
+        """ Evolves according to the logistic map """
 
         # Copying is necessary
         ret = np.copy (self.cgens[gind])
@@ -123,24 +125,28 @@ class Tent (ChaosGenerator) :
 
 
 class Lorenz (ChaosGenerator) :
-    """Lorenz flow -->  xdot = sigma*(y-x)
+    """
+    Lorenz flow -->  xdot = sigma*(y-x)
                         ydot = x*(rho-z) - y
                         zdot = x*y - beta*z
-    sigma, beta, rho = 10, 8/3, 28"""
+    sigma, beta, rho = 10, 8/3, 28
+    """
 
 	# lims is a dictonary containing {(sigma, beta, rho) : limits(3,2)} pairs
     lims = {}
 
     def lorenz (X, t, sigma, beta, rho) :
-        """lorenz differential equation needed by scipy odeint"""
+        """ lorenz differential equation needed by scipy odeint """
 
         x, y, z = X
         dXdt = [sigma*(y-x), x*(rho-z) - y, x*y - beta*z]
         return dXdt
 
     def setLimits (params) :
-        """No need to recalculate limits of the lorenz flow everytime for the
-        same set of parameters"""
+        """
+        No need to recalculate limits of the lorenz flow everytime for the
+        same set of parameters
+        """
 
         if params not in Lorenz.lims :
             # Argument to lambda - (Time series of lorenz flow in all three dimensions)
@@ -152,10 +158,12 @@ class Lorenz (ChaosGenerator) :
 
 
     def __init__ (self, oshape, cascade=True, params=(10, 8.0/3, 28), comp=0, h=0.01, gens=2) :
-        """"params  - (sigma, beta, rho) of lorenz parameters
+        """"
+        params  - (sigma, beta, rho) of lorenz parameters
         comp    - which cdim to consider for chaotic numbers
         h       - Time step of evolution
-        Rest is defined in the parent class"""
+        Rest is defined in the parent class
+        """
 
         ChaosGenerator.__init__ (self, oshape, oshape+(3,), cascade, gens)
         self.params = params
@@ -174,7 +182,10 @@ class Lorenz (ChaosGenerator) :
                 # Argument to lambda - (ith generator jth cdim, min of jth cdim, max of jth cdim)
 
     def evolveT (self, gind, T=1) :
-        """Evolves the lorenz map for T timesteps and sets the internal generator"""
+        """
+        Evolves the lorenz map for T timesteps
+        and sets the internal generator
+        """
 
         for pt in np.ndindex(self.gshape[:-1]) :
         # Per index in (Np, D)
@@ -182,8 +193,10 @@ class Lorenz (ChaosGenerator) :
                                           np.arange(0,self.h*(T+1),self.h), args=self.params)[-1]
 
     def evolve (self, gind) :
-        """Evolves the internal generators 1 h-timestep according to the
-        Lorenz flow equations"""
+        """
+        Evolves the internal generators 1 h-timestep according to the
+        Lorenz flow equations
+        """
 
         ######################################################################
         # If the limits defined in the dict 'lims' are exceeded, then
@@ -203,6 +216,21 @@ class Lorenz (ChaosGenerator) :
 
         self.evolveT (gind)
         return ret
+
+class Henon(ChaosGenerator) :
+    """
+    Henon map (Simplified model of the poincare section of Lorenz model)
+    (x,y) -> (1-ax^2+y, bx)
+    """
+
+    lims = {}
+
+    def __init__ () :
+        """
+        Constructor for the Henon chaotic map object
+        """
+
+
 
 # Used by CPSO for generating swarms
 ChaosGenerator.cgen = {
