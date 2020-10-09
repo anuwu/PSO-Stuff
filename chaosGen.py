@@ -225,7 +225,7 @@ class Henon(ChaosGenerator) :
 
     lims = {}
 
-    def __init__ () :
+    def __init__ (self, oshape, cascade=True, params=(10, 8.0/3, 28), comp=0, h=0.01, gens=2) :
         """
         Constructor for the Henon chaotic map object
         """
