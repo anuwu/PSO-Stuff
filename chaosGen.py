@@ -37,16 +37,19 @@ class ChaosGenerator () :
         # (Np, D, cdims) --> (D, cdims)
         # where 'cdims' is the number of dimensions of the chaotic map/flow
         #
-        # NOTE - By default, if map is single dimensional, then cdims=1 and
-        # the last shape value is omitted
+        # NOTE - By default, if map is single dimensional, then the last shape
+        # dimension (of 1) is omitted
         ######################################################################
         self.gshape = (lambda s: s[1:] if cascade else s)(oshape if gshape is None else gshape)
         self.cascade = cascade
         self.gens = gens
 
         # Creating the list of generators with shape (gens, Np, D, cdims)
-        self.cgens = (lambda s:np.array([np.random.random_sample (s) for i in range(gens)]))\
-                    (self.gshape)
+        self.cgens = np.array([
+            np.random.random_sample(self.gshape)
+            for i in range(gens)
+        ])
+
 
     def getCgens (self) :
         """ Returns a copy of the internal generators """
@@ -117,7 +120,7 @@ class Tent (ChaosGenerator) :
         """Evolves according to the tent map"""
 
         # Copying is necessary
-        ret = np.copy (self.cgens[gind])
+        ret = np.copy(self.cgens[gind])
 
         self.cgens[gind] = (lambda mu,x : np.where(x <= mu, x/mu, (1-x)/(1-mu)))\
                             (self.mu, self.cgens[gind])
@@ -173,10 +176,17 @@ class Lorenz (ChaosGenerator) :
         # Set limits if not set already
         Lorenz.setLimits (params)
 
-        for i in range(0, self.gens) :
+        ######################################################################
+        # !!!!! IDEA FOR OOP !!!!!!!
+        # Introduce two subclasses - Normalised, and unnormalised
+        # The unnormalised class will have normalisation functions like the one
+        # below (Also seen in Henon map)
+        ######################################################################
+
         # Per generator
-            for j in [0, 1, 2] :
+        for i in range(0, self.gens) :
             # Per dimension of lorenz flow
+            for j in [0, 1, 2] :
                 self.cgens[i,...,j] = (lambda st,mn,mx : mn + (mx - mn)*st)\
                                     (self.cgens[i,...,j], Lorenz.lims[params][j,0], Lorenz.lims[params][j,1])
                 # Argument to lambda - (ith generator jth cdim, min of jth cdim, max of jth cdim)
@@ -207,12 +217,12 @@ class Lorenz (ChaosGenerator) :
 
         # Copying is not necessary as it is being scaled
         ret = (lambda n2 : np.where (n2 > 1, 1-eps, n2))(
-            (lambda n1 : np.where (n1 < 0, eps, n1))(
-            (lambda st, mn, mx : (st - mn)/(mx - mn))
-            (self.cgens[gind,...,self.comp],
-             Lorenz.lims[self.params][self.comp,0],
-             Lorenz.lims[self.params][self.comp,1])
-            ))
+                (lambda n1 : np.where (n1 < 0, eps, n1))(
+                    (lambda st, mn, mx : (st - mn)/(mx - mn))
+                    (self.cgens[gind,...,self.comp],
+                     Lorenz.lims[self.params][self.comp,0],
+                     Lorenz.lims[self.params][self.comp,1])
+                ))
 
         self.evolveT (gind)
         return ret
@@ -225,16 +235,105 @@ class Henon(ChaosGenerator) :
 
     lims = {}
 
-    def __init__ (self, oshape, cascade=True, params=(10, 8.0/3, 28), comp=0, h=0.01, gens=2) :
+    def setLimits (params) :
+        """ Sets the x, y limits of a run of iterates of the Henon map """
+
+        if not params in Henon.lims :
+            a, b = params
+            x, y = np.random.rand(), np.random.rand()
+            minx, maxx, miny, maxy = x, x, y, y
+
+            for _ in range(999999) :
+                tmp = x
+                x = 1 - a*x*x + y
+                y = b*tmp
+
+                minx = min(minx, x)
+                miny = min(miny, y)
+                maxx = max(maxx, x)
+                maxy = max(maxy, y)
+
+            Henon.lims[params] = np.array([
+                [minx, maxx], [miny, maxy]
+            ])
+
+
+    def __init__ (self, oshape, cascade=True, params=(1.4, 0.3), comp=0, gens=2) :
         """
         Constructor for the Henon chaotic map object
+        params          - (a, b) parameters of the Henon map
         """
 
+        ChaosGenerator.__init__ (self, oshape, oshape+(2,), cascade, gens)
+        self.params = params
+        self.comp = comp
+
+        # Setting the limits for the Henon map
+        Henon.setLimits(params)
+
+        # Per generator
+        for i in range(0, self.gens) :
+            # Per dimension of Henon map
+            for j in [0, 1] :
+                self.cgens[i,...,j] = (lambda st,mn,mx : mn + (mx - mn)*st)\
+                                    (self.cgens[i,...,j], Henon.lims[params][j,0], Henon.lims[params][j,1])
+
+    def evolve (self, gind) :
+        """ Evolves the Henon map by one iterate """
+
+        # Tolerance to set back if iterate is beyond bounds
+        eps = 1e-5
+
+        # Copying is not necessary as it is being scaled
+        ret = (lambda n2 : np.where (n2 > 1, 1-eps, n2))(
+                (lambda n1 : np.where (n1 < 0, eps, n1))(
+                    (lambda st, mn, mx : (st - mn)/(mx - mn))
+                    (self.cgens[gind,...,self.comp],
+                     Henon.lims[self.params][self.comp,0],
+                     Henon.lims[self.params][self.comp,1])
+                ))
+
+        a, b = self.params
+        x, y = np.copy(self.cgens[gind,...,0]), self.cgens[gind,...,1]
+        x2 = np.square(x)
+        self.cgens[gind,...,0] = 1 - a*x2 + y
+        self.cgens[gind,...,1] = b*x
+
+        return ret
+
+class Baker (ChaosGenerator) :
+    """
+    Baker map -->   (2x, y/2) if 0 <= x < 1/2
+                    (2-2x, 1-y/2) 1/2 <= x < 1
+    """
+
+    def __init__ (self, oshape, cascade=True, mu=0.49999, comp=0, gens=2) :
+
+        ChaosGenerator.__init__ (self, oshape, oshape+(2,), cascade, gens)
+        self.mu = mu
+        self.comp = comp
+
+    def evolve (self, gind) :
+        """ Evolves one time-step according to the baker map """
+
+        ret = np.copy(self.cgens[gind,...,self.comp])
+        x, y = np.copy(self.cgens[gind,...,0]), np.copy(self.cgens[gind,...,1])
+        less = x < self.mu
+        more = np.invert(less)
+
+        self.cgens[gind,less,0] = 2*x[less]
+        self.cgens[gind,less,1] = y[less]/2
+        self.cgens[gind,more,0] = 2 - 2*x[more]
+        self.cgens[gind,more,1] = 1 - y[more]/2
+
+        return ret
 
 
 # Used by CPSO for generating swarms
 ChaosGenerator.cgen = {
 "log"       : Logistic,
 "lorenz"    : Lorenz,
-"tent"      : Tent
+"tent"      : Tent,
+"henon"     : Henon,
+"baker"     : Baker
 }
