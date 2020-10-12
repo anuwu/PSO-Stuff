@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
+from scipy.optimize import brentq
 
 class ChaosGenerator () :
     """
@@ -79,7 +80,6 @@ class ChaosGenerator () :
                 self.chaosPoints(i+1) for i in range(self.gens)
             ])
 
-
 class Logistic (ChaosGenerator) :
     """
     Logistic map --> f(x) = r*x*(1-x)
@@ -105,6 +105,61 @@ class Logistic (ChaosGenerator) :
         self.cgens[gind] = r*x*(1-x)
         return ret
 
+class InverseLE (ChaosGenerator) :
+    """
+        Finds a uni-dimensional map with a pre-determined lyapunov
+        exponent and evolves points according to it
+        Check the paper 'The problem of the inverse Lyapunov exponent and its applications'
+        by Marcin Lawnik
+    """
+
+    def __invmap__ (self, eps=1e-4) :
+        if self.le <= np.log(2) :
+            lep = lambda p : self.le + p*np.log(p) + (1-p)*np.log(1-p)
+            lo, mid, hi = 0, 0.5, 1
+            cmap = lambda p : lambda x : x/p if x <= p else (1-x)/(1-p)
+        else :
+            n = np.ceil(np.exp(self.le)).astype(np.int)
+            lep = lambda p : self.le - (n-2)/n*np.log(n) + p*np.log(p) + (2/n - p)*np.log(2/n - p)
+            lo, mid, hi = 0, 1/n, 2/n
+
+            def cmap (p) :
+                def _cmap(x) :
+                    nx = n*x
+                    nums = np.arange(0, n-2)
+                    sub = nums[np.argmin(np.where(nx - nums > 0, nx - nums, n))]
+
+                    if sub < n-3 or nx < n-2 :
+                        return nx - sub
+                    elif nx < n-2 + p*n : # sub == n-3
+                        return (nx - (sub+1))/(n*p)
+                    else :
+                        return (nx - (sub+1) - n*p)/(2 - n*p)
+                return _cmap
+
+
+        plist = [brentq(lep, lo+eps, mid-eps), brentq(lep, mid+eps, hi-eps)]
+        self.invmap = np.vectorize(cmap(plist[
+            1 if np.random.rand() >= 0.5 else 0
+        ]))
+
+    def __init__ (self, oshape, cascade=True, le=1.28991999999, gens=2) :
+        """ le      - The lyapunov exponent whose map has to be found """
+
+        ChaosGenerator.__init__(self, oshape, None, cascade, gens)
+        self.le = le
+
+        self.__invmap__()
+
+    def evolve (self, gind) :
+        """ Evolves according to the calculated inverse map """
+
+        # Copying is necessary
+        x = self.cgens[gind]
+        ret = np.copy(x)
+
+        self.cgens[gind] = self.invmap(x)
+        return ret
 
 class Tent (ChaosGenerator) :
     """Tent map --> f(x) = 2*x , x <= 0.5 ; 2*(1-x) , x > 0.5
@@ -126,7 +181,6 @@ class Tent (ChaosGenerator) :
 
         self.cgens[gind] = np.where(x <= mu, x/mu, (1-x)/(1-mu))
         return ret
-
 
 class Lorenz (ChaosGenerator) :
     """
@@ -329,12 +383,12 @@ class Baker (ChaosGenerator) :
 
         return ret
 
-
 # Used by CPSO for generating swarms
 ChaosGenerator.cgen = {
 "log"       : Logistic,
 "lorenz"    : Lorenz,
 "tent"      : Tent,
 "henon"     : Henon,
-"baker"     : Baker
+"baker"     : Baker,
+"inverse"   : InverseLE
 }
