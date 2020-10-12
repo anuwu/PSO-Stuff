@@ -99,9 +99,10 @@ class Logistic (ChaosGenerator) :
         """ Evolves according to the logistic map """
 
         # Copying is necessary
-        ret = np.copy (self.cgens[gind])
+        x, r = self.cgens[gind], self.r
+        ret = np.copy(x)
 
-        self.cgens[gind] = (lambda r,x : r*x*(1-x))(self.r, self.cgens[gind])
+        self.cgens[gind] = r*x*(1-x)
         return ret
 
 
@@ -120,10 +121,10 @@ class Tent (ChaosGenerator) :
         """Evolves according to the tent map"""
 
         # Copying is necessary
-        ret = np.copy(self.cgens[gind])
+        x, mu = self.cgens[gind], self.mu
+        ret = np.copy(x)
 
-        self.cgens[gind] = (lambda mu,x : np.where(x <= mu, x/mu, (1-x)/(1-mu)))\
-                            (self.mu, self.cgens[gind])
+        self.cgens[gind] = np.where(x <= mu, x/mu, (1-x)/(1-mu))
         return ret
 
 
