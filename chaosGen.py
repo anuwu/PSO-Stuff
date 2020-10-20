@@ -114,7 +114,7 @@ class InverseLE (ChaosGenerator) :
     """
 
     def __invmap__ (self, eps=1e-4) :
-        if self.le <= np.log(2) :
+        if self.le < np.log(2) :
             lep = lambda p : self.le + p*np.log(p) + (1-p)*np.log(1-p)
             lo, mid, hi = 0, 0.5, 1
             cmap = lambda p : lambda x : x/p if x <= p else (1-x)/(1-p)
@@ -149,7 +149,11 @@ class InverseLE (ChaosGenerator) :
         ChaosGenerator.__init__(self, oshape, None, cascade, gens)
         self.le = le
 
-        self.__invmap__()
+        if le == np.log(2) :
+            mu = 0.49999
+            self.invmap = lambda x : np.where(x <= mu, x/mu, (1-x)/(1-mu))
+        else :
+            self.__invmap__()
 
     def evolve (self, gind) :
         """ Evolves according to the calculated inverse map """
