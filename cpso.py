@@ -212,7 +212,7 @@ class CPSO_Optimizer () :
         leftvio = leftvio[vio]
         rightvio = rightvio[vio]
         partV = part[vio]
-        particleV = particle[vio]
+        particleV = particles[vio]
 
         limvec = np.copy(partV)
         limvec[leftvio] = np.tile(llim, (viosum, 1))[leftvio]
