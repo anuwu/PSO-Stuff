@@ -3,4 +3,4 @@ __pycache__
 !CPSO.ipynb
 
 # From ubuntu system
-*.ipynb
+Notebooks/
