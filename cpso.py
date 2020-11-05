@@ -11,7 +11,7 @@ import pso_util as pu
 import chaosGen as cg
 
 norm = lambda x : np.sqrt(np.sum(np.square(x)))
-norms = lambda X : np.sqrt(np.sum(np.square(X), axis=1))
+norms = lambda X : np.sqrt(np.sum(np.square(X), axis=1, keepdims=True))
 
 class PSO () :
     """
@@ -504,10 +504,10 @@ class GB_PSO (PSO) :
         while True :
             max_dist = norm(gbest)
             p_dists = norms(self.particles - gbest)
-            self.velocity = p_dists/max_dist
+            self.velocity = (gbest - self.particles)*p_dists/max_dist
 
             # Perform velocity clipping before running ipcd() to minimize any violations
-            self.velocity = pu.vclip(self.velocity.reshape(-1, 1), self.vmax)
+            self.velocity = pu.vclip(self.velocity, self.vmax)
 
             ######################################################################
             # Perform "Inverse Parabolic Confined Distribution" technique for
