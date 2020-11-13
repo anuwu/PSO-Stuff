@@ -93,7 +93,7 @@ class PSO () :
         self.appendCache(self.particles, self.velocity, pbest, gbest)
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, max_iters=10000, vtol=1e-4) :
+    def optimize (self, w=0.7, c1=2, c2=2, max_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         pbest, gbest = self.__optiminit__()
@@ -110,7 +110,7 @@ class PSO () :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.velocity) < vtol).all() :
+            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
         return gbest
@@ -194,7 +194,7 @@ class ChaoticAdaswarm (PSO) :
         momentum = np.zeros(shape=self.particles.shape)
         return momentum, pbest, gbest
 
-    def optimize (self, get_grad=False, c1=2, c2=2, alpha=1.2, beta=0.9, max_iters=10000, vtol=1e-4) :
+    def optimize (self, get_grad=False, c1=2, c2=2, alpha=1.2, beta=0.9, max_iters=10000, tol=1e-2) :
         """
         Performs the PSO optimization loop
         Arguments are default PSO parameters
@@ -230,7 +230,7 @@ class ChaoticAdaswarm (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.velocity) < vtol).all() :
+            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
         # Convert cache list to numpy ndarray
@@ -317,7 +317,7 @@ class HECS_PSO (PSO) :
 
         return fitness_q, pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_iters=10000, vtol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_iters=10000, tol=1e-2) :
         """ Runs the PSO loop """
 
         fitness_q, pbest, gbest = self.__optiminit__()
@@ -327,7 +327,7 @@ class HECS_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.velocity) < vtol).all() :
+            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
             # Chaotic search
@@ -394,7 +394,7 @@ class PWLC_PSO (PSO) :
 
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_chaos_iters=500, max_pso_iters=10000, vtol=1e-4) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_chaos_iters=500, max_pso_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         pbest, gbest = self.__optiminit__()
@@ -436,7 +436,7 @@ class PWLC_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_pso_iters or \
-            i > 100 and (np.abs(self.velocity) < vtol).all() :
+            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
 class GB_PSO (PSO) :
@@ -495,7 +495,7 @@ class GB_PSO (PSO) :
         self.appendCache(self.particles, self.velocity, gbest)
         return gbest
 
-    def optimize (self, c1=2, c2=2, alpha=1.2, max_iters=10000, vtol=1e-4) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         gbest = self.__optiminit__()
@@ -504,7 +504,7 @@ class GB_PSO (PSO) :
         while True :
             max_dist = norm(gbest)
             p_dists = norms(self.particles - gbest)
-            self.velocity = (gbest - self.particles)*p_dists/max_dist
+            self.velocity = w*self.velocity + (gbest - self.particles)*p_dists/max_dist
 
             # Perform velocity clipping before running ipcd() to minimize any violations
             self.velocity = pu.vclip(self.velocity, self.vmax)
@@ -519,7 +519,7 @@ class GB_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.velocity) < vtol).all() :
+            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
         return gbest
