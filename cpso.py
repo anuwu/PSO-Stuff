@@ -448,7 +448,7 @@ class GB_PSO (PSO) :
 
     def __optiminit__ (self) :
         self.initParticles()
-        gbest = np.copy(min(self.particles, key = self.objkey))
+        gbest = np.copy(min(self.particles, key=self.objkey))
         return gbest
 
     def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, min_iters=100, max_iters=10000, tol=1e-2) :
@@ -497,7 +497,7 @@ class RI_PSO (PSO) :
         self.hulls = []
         self.cgen = None
 
-    def forward (self, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, max_chaos_iters=500, tol=1e-2) :
+    def forward (self, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, max_chaos_iters=500, tol=1e-2, chaos_search_prob=0.75) :
         """ Forward PSO with hull exclusion and chaotic search """
 
         # Initialise particles and necessary states
@@ -530,37 +530,54 @@ class RI_PSO (PSO) :
             if self.hulls != [] :
                 for j, qp in enumerate(self.particles) :
                     for hull_tup in self.hulls :
-                        if pu.isPointIn(qp, hull_tup) :
-                            # Copying pbest
-                            pbest_tmp = np.array([
-                                np.inf if k == j else self.objkey(pb)
-                                for k, pb in enumerate(pbest)
-                            ])
+                        pip = hull_tup[1]
+                        dets, supps = hull_tup[3:]
+                        if pu.isPointIn(qp, pip, dets, supps) :
+                            if np.random.rand() > 1 - chaos_search_prob :
+                                # Copying pbest
+                                pbest_tmp = np.array([
+                                    np.inf if k == j else self.objkey(pb)
+                                    for k, pb in enumerate(pbest)
+                                ])
 
-                            # Central about about which chaotic search occurs within a search radius
-                            chaos_cent = pbest[np.argmin(pbest_tmp)]
-                            chaos_points = chaos_cent + self.vmax*(2*self.cgen.chaosPoints(1) - 1)
+                                # Central about about which chaotic search occurs within a search radius
+                                chaos_cent = pbest[np.argmin(pbest_tmp)]
+                                chaos_points = chaos_cent + self.vmax*(2*self.cgen.chaosPoints(1) - 1)
+                                # chaos_points = chaos_cent + self.vmax*(2*np.random.rand(max_chaos_iters, self.D) - 1)
 
-                            # Checking if chaotic particle violates dimension limits
-                            lim_cp = np.logical_or(self.llim.reshape(1, -1) > chaos_points, chaos_points < self.rlim.reshape(1, -1)).any(axis=1)
+                                # Checking if chaotic particle violates dimension limits
+                                lim_cp = np.logical_or(self.llim.reshape(1, -1) > chaos_points, chaos_points < self.rlim.reshape(1, -1)).any(axis=1)
 
-                            # Checking if chaotic particle itself is in some minima hull
-                            cp_out_hull = np.array([
-                                np.array([
-                                    pu.isPointIn(cp, ht)
-                                    for ht in self.hulls
-                                ]).any()
-                                for cp in chaos_points
-                            ])
+                                # Checking if chaotic particle itself is in some minima hull
+                                cp_out_hull = np.array([
+                                    np.array([
+                                        pu.isPointIn(cp, ht[1], ht[3], ht[4])
+                                        for ht in self.hulls
+                                    ]).any()
+                                    for cp in chaos_points
+                                ])
 
-                            # Disallow particle if it's violated search limits or within some hull
-                            obj_cp = np.where(np.logical_or(lim_cp, cp_out_hull), np.inf, self.obj(chaos_points))
+                                # Disallow particle if it's violated search limits or within some hull
+                                obj_cp = np.where(np.logical_or(lim_cp, cp_out_hull), np.inf, self.obj(chaos_points))
 
-                            # Best chaotic particle
-                            gbest_cp = np.argmin(obj_cp).flatten()
+                                # Best chaotic particle
+                                gbest_cp = np.argmin(obj_cp).flatten()
 
-                            # Replace original particle with best chaotic particle
-                            self.particles[j] = chaos_points[gbest_cp]
+                                # Replace original particle with best chaotic particle
+                                self.particles[j] = chaos_points[gbest_cp]
+                            else :
+                                while True :
+                                    randp = self.llim + np.random.rand(self.D)*(self.rlim - self.llim)
+                                    in_hull = np.array([
+                                        pu.isPointIn(randp, ht[1], ht[3], ht[4])
+                                        for ht in self.hulls
+                                    ]).any()
+
+                                    if not in_hull :
+                                        break
+
+                                self.particles[j] = randp
+
                             pbest[j] = self.particles[j]
                             self.velocity[j] = self.vmax*(2*np.random.rand(self.D) - 1)
                             momentum[j] = 0
@@ -574,7 +591,7 @@ class RI_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
+            i > min_iters and (np.abs(self.particles - pbest[gbest_ind]) < tol).all() :
                 break
 
         # print("\rForward iterations = {}\n".format(i), end="")
@@ -584,24 +601,39 @@ class RI_PSO (PSO) :
     def reverse (self, opt, w=0.7, c1=2, c2=2, min_iters=50, max_iters=1000) :
         """ Reverse PSO loop """
 
-        # Initialise particles and their corresponding past pbests - going back in time!
-        xs, fs = pu.dirmin_foreign(opt, self.objkey, self.llim, self.rlim, self.Np)
+        # xs, fs = pu.dirmin_foreign(opt, self.objkey, self.llim, self.rlim, self.Np)
+        xs = opt + 1e-3*(np.random.rand(self.Np, self.D) - 0.5)
         vs = 1e-3*np.random.rand(self.Np, self.D)
         pbest = np.copy(xs)
         gbest = min(pbest, key=self.objkey)
 
         # Same magintude as forward PSO stopping criteria tolerance
         vmax = 1e-2*np.ones_like(self.llim).reshape(1, -1)
+        less_once, fs = False, None
 
         for i in range(max_iters) :
             r1s = np.random.rand(self.Np, self.D)
             r2s = np.random.rand(self.Np, self.D)
 
+            if less_once :
+                if fs is None :
+                    delta_xs = xs - opt
+                    nxs = delta_xs/np.linalg.norm(delta_xs, axis=1, keepdims=True)
+                    fs = np.array([
+                        pu.get_dirmin(opt, nx, self.objkey, self.llim, self.rlim)
+                        for nx in nxs
+                    ])
+                pb_past = fs
+                gb = gbest
+            else :
+                pb_past = xs
+                gb = opt
+
             # Each dimension of a particle has an associated update matrix
             mats = np.array([
                 [
-                    [1 + c1*r1s[p,d] + c2*r2s[p,d], w, -c1*r1s[p,d]*fs[p,d] - c2*r2s[p,d]*gbest[d]],
-                    [c1*r1s[p,d] + c2*r2s[p,d], w, -c1*r1s[p,d]*fs[p,d] - c2*r2s[p,d]*gbest[d]],
+                    [1 - c1*r1s[p,d] - c2*r2s[p,d], w, c1*r1s[p,d]*pb_past[p,d] + c2*r2s[p,d]*gbest[d]],
+                    [-c1*r1s[p,d] - c2*r2s[p,d], w, c1*r1s[p,d]*pb_past[p,d] + c2*r2s[p,d]*gbest[d]],
                     [0, 0, 1]
                 ]
                 for p in range(self.Np)
@@ -631,11 +663,15 @@ class RI_PSO (PSO) :
 
             print("\r{}".format(i), end="")
             if i >= min_iters and less.all() :
-                break
+                if not less_once :
+                    less_once = True
+                else :
+                    break
 
-        hull = ConvexHull(xs)
-        l = len(hull.vertices)
+        verts = np.copy(np.concatenate((xs, gbest.reshape(1, -1)), axis=0))
+        hull = ConvexHull(verts)
+        pip = (verts[0] + verts[(len(hull.vertices) - 1)//2])/2
 
         # print("\rReverse iterations = {}\n".format(i), end="")
         print("\n", end="")
-        self.hulls.append((hull, opt, np.copy(xs)))
+        self.hulls.append((hull, pip, verts) + pu.hull_hyperplanes(hull.simplices, verts))

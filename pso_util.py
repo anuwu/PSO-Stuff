@@ -98,62 +98,16 @@ def get_dirmin (point, nx, objkey, llim, rlim) :
     min_lin = np.argmin(lin_func)
     return linD[min_lin]
 
-def get_foreign_dirmin (org, objkey, llim, rlim) :
-    """
-    Given an origin point, returns the minima along a random direction
-        org     - Origin point
-        objkey  - Objective function by which to choose the minima
-        llim    - Left boundary of search space
-        rlim    - Right boundary of search space
-    """
 
-    dims = org.shape[0]
-    dx = 1e-3*(np.random.rand(dims) - 0.5)          # Random direction
-    nx = dx/np.linalg.norm(dx)                      # Unit vector of random direction
-
-    return org + dx, get_dirmin(org, nx, objkey, llim, rlim)
-
-def dirmin_foreign (org, objkey, llim, rlim, noParticles) :
-    """
-    Gives a specified number of directional minimas from an origin point
-        org             - Origin point
-        objkey          - Objective function by which to choose minima
-        llim            - Left boundary of search space
-        rlim            - Right boundary of search space
-        noParticles     - Number of particles to generate
-    """
-
-    seeds_foreigns = np.array([
-        get_foreign_dirmin(org, objkey, llim, rlim)
-        for _ in range(noParticles)
-    ])
-
-    return seeds_foreigns[:,0], seeds_foreigns[:,1]
-
-def isPointIn (qp, hull_tup) :
-    """
-    Checks if a point is inside a convex hull
-        qp          - query point
-        hull_tup    - convex hull tuple with associated information
-    """
+def hull_hyperplanes (simplices, verts) :
+    """ Get the hyperplane determinants and supports for the hull """
 
     # Determinants and supports for solving the 'point in polytope'
     dets, supps = [], []
-
-    #####################################################################
-    # Contents of the hull tuple
-    # hull      - List of type [[ind]], 'ind' represent N indices of the
-    #           from the xs list of points that define the N-dimensional
-    #           hyperplane
-    # pip       - Generated point inside the polytope
-    # xs        - Reference points used to construct hyperplanes of the hull
-    #####################################################################
-    hull, pip, xs = hull_tup
-
-    dims = xs.shape[1]
-    for simp in hull.simplices :
+    dims = verts.shape[1]
+    for simp in simplices :
         ps = np.array([
-            np.copy(xs[i]) for i in simp
+            np.copy(verts[i]) for i in simp
         ])
 
         # Choose last point as the support
@@ -169,6 +123,15 @@ def isPointIn (qp, hull_tup) :
 
         dets.append(det)
         supps.append(supp)
+
+    return dets, supps
+
+def isPointIn (qp, pip, dets, supps) :
+    """
+    Checks if a point is inside a convex hull
+        qp          - query point
+        hull_tup    - convex hull tuple with associated information
+    """
 
     #####################################################################
     # Sign of hyperplane equation, when both 'qp' and 'pip' are substituted
