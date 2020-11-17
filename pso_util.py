@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import cycle
 
 def vclip (velocity, vmax) :
     """ Clips and scales down the velocity according to 'vmax' """
@@ -58,28 +59,122 @@ def ipcd (particles, velocity, llim, rlim, alpha=1.2) :
 
     return part, velocity
 
-def getSwarm (shape, llim, rlim, initgen="", randgen="", cache=False) :
+def get_dirrand (point, nx, llim, rlim) :
     """
-    Returns a swarm of particles which PSO uses
-        shape   - (Np, D)
-        llim    - Left limits for each dimension
-        rlim    - Right limits for each dimension
-        initgen - Number generator for initialising particles
-                - Can be basic numpy.random or chaotic generator
-        randgen - Number generator for r1, r2 of PSO
-                - Can be basic numpy.random or chaotic generator
+    Returns a random point from a line
+        point       - Origin point of line
+        nx          - Unit vector from line
+        llim        - Left boundary of search space
+        rlim        - Right boundary of search space
     """
-    import chaosGen as cg
 
-    # Dimensions of the swarm must be the no. of dimensions in the boundary
-    assert shape[1] == len(llim) == len(rlim)
+    end = np.where (nx < 0, llim, rlim)
+    diff = end - point
+    min_k = np.argmin(np.abs(diff))
+    seedlim = point + diff[min_k]/nx[min_k]*nx
 
-    # Chaotic map descriptor string --> Generator
-    gs = lambda st : (lambda i : np.random.random_sample(shape)) if st == ""\
-                                                                else cg.ChaosGenerator.getGen(shape, st)
+    linD = np.array([np.linspace(a, b, 1000)[500:] for a, b in zip(point, seedlim)]).transpose()
+    return linD[np.random.choice(np.arange(linD.shape[0]))]
 
-    # CPSO_Optimizer object ready to be initialised as it's supplied an objective function
-    return lambda o : CPSO_Optimizer(o, llim, rlim,
-                                         gs(initgen),
-                                         gs(randgen),
-                                         cache=cache)
+def get_dirmin (point, nx, objkey, llim, rlim) :
+    """
+    Returns a minimum point from a line
+        point       - Origin point of line
+        nx          - Unit vector from line
+        objkey      - Objective function by which to choose the minima
+        llim        - Left boundary of search space
+        rlim        - Right boundary of search space
+    """
+
+    end = np.where (nx < 0, llim, rlim)
+    diff = end - point
+    min_k = np.argmin(np.abs(diff))
+    seedlim = point + diff[min_k]/nx[min_k]*nx
+
+    linD = np.array([np.linspace(a, b, 1000)[500:] for a, b in zip(point, seedlim)]).transpose()
+    lin_func = np.array([
+        objkey(x) for x in linD
+    ])
+    min_lin = np.argmin(lin_func)
+    return linD[min_lin]
+
+def get_foreign_dirmin (org, objkey, llim, rlim) :
+    """
+    Given an origin point, returns the minima along a random direction
+        org     - Origin point
+        objkey  - Objective function by which to choose the minima
+        llim    - Left boundary of search space
+        rlim    - Right boundary of search space
+    """
+
+    dims = org.shape[0]
+    dx = 1e-3*(np.random.rand(dims) - 0.5)          # Random direction
+    nx = dx/np.linalg.norm(dx)                      # Unit vector of random direction
+
+    return org + dx, get_dirmin(org, nx, objkey, llim, rlim)
+
+def dirmin_foreign (org, objkey, llim, rlim, noParticles) :
+    """
+    Gives a specified number of directional minimas from an origin point
+        org             - Origin point
+        objkey          - Objective function by which to choose minima
+        llim            - Left boundary of search space
+        rlim            - Right boundary of search space
+        noParticles     - Number of particles to generate
+    """
+
+    seeds_foreigns = np.array([
+        get_foreign_dirmin(org, objkey, llim, rlim)
+        for _ in range(noParticles)
+    ])
+
+    return seeds_foreigns[:,0], seeds_foreigns[:,1]
+
+def isPointIn (qp, hull_tup) :
+    """
+    Checks if a point is inside a convex hull
+        qp          - query point
+        hull_tup    - convex hull tuple with associated information
+    """
+
+    # Determinants and supports for solving the 'point in polytope'
+    dets, supps = [], []
+
+    #####################################################################
+    # Contents of the hull tuple
+    # hull      - List of type [[ind]], 'ind' represent N indices of the
+    #           from the xs list of points that define the N-dimensional
+    #           hyperplane
+    # pip       - Generated point inside the polytope
+    # xs        - Reference points used to construct hyperplanes of the hull
+    #####################################################################
+    hull, pip, xs = hull_tup
+
+    dims = xs.shape[1]
+    for simp in hull.simplices :
+        ps = np.array([
+            np.copy(xs[i]) for i in simp
+        ])
+
+        # Choose last point as the support
+        supp = np.copy(ps[-1])
+        ps = ps[:-1]
+        ps -= supp
+
+        # Evaluate determinants that will become the coefficients of the hyperplane equation
+        det = np.array([
+            sgn*np.linalg.det(ps[:, list(range(i)) + list(range(i+1, dims))])
+            for i, sgn in zip(range(dims), cycle([1, -1]))
+        ])
+
+        dets.append(det)
+        supps.append(supp)
+
+    #####################################################################
+    # Sign of hyperplane equation, when both 'qp' and 'pip' are substituted
+    # into it,
+    #####################################################################
+    return np.all([
+        np.sum(d*(pip-s)) * np.sum(d*(qp-s)) >= 0
+        for d, s in zip(dets, supps)
+    ])
