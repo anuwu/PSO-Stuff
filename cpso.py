@@ -50,7 +50,7 @@ class PSO () :
         gbest = np.copy(min(pbest, key = self.objkey))
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, min_iters=100, max_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         pbest, gbest = self.__optiminit__()
@@ -69,7 +69,7 @@ class PSO () :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.particles - gbest) < tol).all() :
+            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         print("\n", end="")
@@ -144,7 +144,7 @@ class ChaoticAdaswarm (PSO) :
         self.appendCache(self.particles, self.velocity, momentum, pbest, gbest)
         return momentum, pbest, gbest
 
-    def optimize (self, get_grad=False, c1=2, c2=2, alpha=1.2, beta=0.9, max_iters=10000, tol=1e-2) :
+    def optimize (self, get_grad=False, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, tol=1e-2) :
         """
         Performs the PSO optimization loop
         Arguments are default PSO parameters
@@ -182,7 +182,7 @@ class ChaoticAdaswarm (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.particles - gbest) < tol).all() :
+            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         # Convert cache list to numpy ndarray
@@ -296,7 +296,7 @@ class HECS_PSO (PSO) :
         fitness_q.append(self.obj(self.particles))
         return fitness_q, pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, min_iters=100, max_iters=10000, tol=1e-2) :
         """ Runs the PSO loop """
 
         fitness_q, pbest, gbest = self.__optiminit__()
@@ -310,7 +310,7 @@ class HECS_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.particles - gbest) < tol).all() :
+            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
                 break
 
             # Chaotic search
@@ -382,7 +382,7 @@ class PWLC_PSO (PSO) :
         pbest, gbest = super().__optiminit__()
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_chaos_iters=500, max_pso_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_chaos_iters=500, min_pso_iters=100, max_pso_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         pbest, gbest = self.__optiminit__()
@@ -427,7 +427,7 @@ class PWLC_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_pso_iters or \
-            i > 100 and (np.abs(self.particles - self.particles[0]) < tol).all() :
+            i > min_pso_iters and (np.abs(self.particles - self.particles[0]) < tol).all() :
                 break
 
         print("\n", end="")
@@ -451,7 +451,7 @@ class GB_PSO (PSO) :
         gbest = np.copy(min(self.particles, key = self.objkey))
         return gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, min_iters=100, max_iters=10000, tol=1e-2) :
         """ Optimization loop of plain PSO """
 
         gbest = self.__optiminit__()
@@ -475,7 +475,7 @@ class GB_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.particles - gbest) < tol).all() :
+            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         print("\n", end="")
@@ -497,7 +497,7 @@ class RI_PSO (PSO) :
         self.hulls = []
         self.cgen = None
 
-    def forward (self, c1=2, c2=2, alpha=1.2, beta=0.9, max_iters=10000, max_chaos_iters=500, tol=1e-2) :
+    def forward (self, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, max_chaos_iters=500, tol=1e-2) :
         """ Forward PSO with hull exclusion and chaotic search """
 
         # Initialise particles and necessary states
@@ -574,7 +574,7 @@ class RI_PSO (PSO) :
             i += 1
             print("\r{}".format(i), end="")
             if i == max_iters or \
-            i > 100 and (np.abs(self.particles - pbest[gbest_ind]) < tol).all() :
+            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         # print("\rForward iterations = {}\n".format(i), end="")
