@@ -94,7 +94,7 @@ class Logistic (ChaosGenerator) :
         Rest is defined in the parent class
         """
 
-        ChaosGenerator.__init__(self, oshape, None, cascade, gens)
+        super().__init__(oshape, None, cascade, gens)
         self.r = r
 
     def evolve (self, gind) :
@@ -147,9 +147,12 @@ class InverseLE (ChaosGenerator) :
         ]))
 
     def __init__ (self, oshape, cascade=True, le=1.28991999999, gens=2) :
-        """ le      - The lyapunov exponent whose map has to be found """
+        """
+			le      - The lyapunov exponent whose map has to be found
+			Rest is defined in the base class
+		"""
 
-        ChaosGenerator.__init__(self, oshape, None, cascade, gens)
+        super().__init__(oshape, None, cascade, gens)
         self.le = le
 
         if le == np.log(2) :
@@ -177,7 +180,7 @@ class Tent (ChaosGenerator) :
         """mu - Tent bifurcation paramater
         Rest is defined in the parent class"""
 
-        ChaosGenerator.__init__(self, oshape, None, cascade, gens)
+        super().__init__(oshape, None, cascade, gens)
         self.mu = mu
 
     def evolve (self, gind) :
@@ -222,8 +225,6 @@ class Lorenz (ChaosGenerator) :
             ]))\
             (odeint (Lorenz.lorenz, np.random.rand(3), np.linspace (0, 9999, 999999), args = params))
 
-
-
     def __init__ (self, oshape, cascade=True, params=(10, 8.0/3, 28), comp=0, h=0.01, gens=2) :
         """"
         params  - (sigma, beta, rho) of lorenz parameters
@@ -232,7 +233,7 @@ class Lorenz (ChaosGenerator) :
         Rest is defined in the parent class
         """
 
-        ChaosGenerator.__init__ (self, oshape, oshape+(3,), cascade, gens)
+        super().__init__ (oshape, oshape+(3,), cascade, gens)
         self.params = params
         self.comp = comp
         self.h = h
@@ -329,7 +330,7 @@ class Henon (ChaosGenerator) :
         params          - (a, b) parameters of the Henon map
         """
 
-        ChaosGenerator.__init__ (self, oshape, oshape+(2,), cascade, gens)
+        super().__init__ (oshape, oshape+(2,), cascade, gens)
         self.params = params
         self.comp = comp
 
@@ -375,7 +376,7 @@ class Baker (ChaosGenerator) :
 
     def __init__ (self, oshape, cascade=True, mu=0.49999, comp=0, gens=2) :
 
-        ChaosGenerator.__init__ (self, oshape, oshape+(2,), cascade, gens)
+        super().__init__ (oshape, oshape+(2,), cascade, gens)
         self.mu = mu
         self.comp = comp
 
