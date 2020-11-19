@@ -1,15 +1,9 @@
-#################################################################
-# Should probably structure the variables among classes and
-# sub-classes efficiently later. Also, I haven't checked whether
-# the chaotic search part in PWLC_PSO and HECS_PSO work.
-#################################################################
-
 import numpy as np
 import pso
 import chaosGen as cg
 from collections import deque
 
-class ChaoticAdaswarm (pso.PSO) :
+class Adaswarm (pso.PSO) :
     """
     AdaSwarm with random number generators replaced with chaotic generators
 
@@ -17,6 +11,29 @@ class ChaoticAdaswarm (pso.PSO) :
     Author  - Rohan et. al.
     Link    - https://arxiv.org/abs/2006.09875
     """
+
+    def get_chaotic_swarm (swarm_args) :
+        """ Returns a warm of particles with specified initialiser and underlying dynamics """
+
+        def ret_swarm (obj, llim, rlim, Np) :
+            D = len(llim)
+            init_cmap = swarm_args['init_cmap']['name']
+            init_args = swarm_args['init_cmap']['args']
+            dyn_cmap = swarm_args['dyn_cmap']['name']
+            dyn_args = swarm_args['dyn_cmap']['args']
+            init_args = ((Np, D), ) + init_args
+            dyn_args = ((Np, D), ) + dyn_args
+
+            return Adaswarm(obj, llim, rlim, Np,
+                lambda x : cg.cgen[init_cmap](*init_args).chaosPoints(x),
+                lambda x : cg.cgen[dyn_cmap](*dyn_args).chaosPoints(x),
+            )
+
+        return ret_swarm
+
+    def get_plain_swarm () :
+        """ Returns a plain swarm """
+        return lambda obj, llim, rlim, Np : Adaswarm(obj, llim, rlim, Np)
 
     def __setcache__ (self) :
         """
@@ -53,7 +70,7 @@ class ChaoticAdaswarm (pso.PSO) :
             self.r1cache,
             self.r2cache) = None, None, None, None, None, None, None
 
-    def __init__ (self, obj, llim, rlim, Np, initgen, randgen, vrat=0.1, cache=False) :
+    def __init__ (self, obj, llim, rlim, Np, initgen=None, randgen=None, vrat=0.1, cache=False) :
         """
         Constructor of the PSO Optimizer with limits and random
         number generators
@@ -64,27 +81,39 @@ class ChaoticAdaswarm (pso.PSO) :
         """
 
         super().__init__(obj, llim, rlim, Np, vrat)
-        self.initgen = initgen                                  # Chaotic generator for the swarm initialiser
-        self.randgen = randgen                                  # Chaotic generator for r1, r2 in optimization loop
-        self.cache = cache                                      # PSO progress cache for replaying history (used in calculating LE of trajectory)
+
+        # Chaotic generators for the swarm initialiser
+        self.initgen = (lambda x : np.random.rand(self.Np, self.D)) \
+                    if initgen is None else initgen
+        self.randgen = (lambda x : np.random.rand(self.Np, self.D)) \
+                    if randgen is None else randgen
+
+        # PSO progress cache for replaying history (used in calculating LE of trajectory)
+        self.cache = cache
         self.__setcache__()
 
-    def __optiminit__ (self) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Adaswarm"
+
+    def _optim_init (self) :
         """ Initialiser of certain state variables before the optimization loop """
 
-        pbest, gbest = super.__optiminit__()
+        pbest, gbest = super()._optim_init()
         momentum = np.zeros_like(self.particles)
         self.appendCache(self.particles, self.velocity, momentum, pbest, gbest)
         return momentum, pbest, gbest
 
-    def optimize (self, get_grad=False, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, tol=1e-2) :
+    def optimize (self, c1=2, c2=2, alpha=1.2, beta=0.9,
+                max_iters=10000, tol=1e-2,
+                print_iters=False) :
         """
         Performs the PSO optimization loop
         Arguments are default PSO parameters
         Returns the optimum found, and lambda function for approximate gradient
         """
 
-        momentum, pbest, gbest = self.__optiminit__()
+        momentum, pbest, gbest = self._optim_init()
 
         i = 0
         while True :
@@ -102,28 +131,28 @@ class ChaoticAdaswarm (pso.PSO) :
             # Perform "Inverse Parabolic Confined Distribution" technique for
             # boundary handling. Also returns updated particle position and velocity
             ######################################################################
-            self.particles, self.velocity = ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
 
             # Update pbest, gbest
             less = self.obj(self.particles) < self.obj(pbest)
             pbest[less] = np.copy(self.particles[less])
             gbest = min(pbest , key = self.objkey)
+            self.conv_curve.append(self.objkey(gbest))
 
             # Append to cache after updating particles, velocities, pbest and gbest
             self.appendCache (self.particles, self.velocity, momentum, pbest, gbest, r1, r2)
 
             i += 1
-            print("\r{}".format(i), end="")
-            if i == max_iters or \
-            i > min_iters and np.sum((np.abs(self.particles - gbest) < tol).all(axis=1)) :
+            if print_iters : print("\r{}".format(i), end="")
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         # Convert cache list to numpy ndarray
         self.numpifyCache ()
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta))
 
-        print("\n", end="")
-        return (gbest, np.sum(np.abs(self.particles - gbest) < tol)) + \
-            (lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta)), ) if get_grad else ()
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)
 
     def appendCache (self, p, v, m, pb, gb, r1=None, r2=None) :
         """ Called every iteration of optimize() """
@@ -219,20 +248,26 @@ class HECS_PSO (pso.PSO) :
         self.Nc = Nc
         self.Gmax = Gmax
         self.rrat = rrat
-        self.cgen = None                                # Chaotic generator for chaotic search
+        self.cgen = None
 
-    def __optiminit__ (self) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Hybrid Embedded Chaotic Search PSO"
+
+    def _optim_init (self) :
         """ Initialiser of certain state variables before the optimization loop """
 
-        pbest, gbest = super().__optiminit__()
+        pbest, gbest = super()._optim_init()
         fitness_q = deque(maxlen=self.Nc)
         fitness_q.append(self.obj(self.particles))
         return fitness_q, pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, min_iters=100, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+                max_iters=10000, tol=1e-2,
+                print_iters=False) :
         """ Runs the PSO loop """
 
-        fitness_q, pbest, gbest = self.__optiminit__()
+        fitness_q, pbest, gbest = self._optim_init()
 
         # Set the chaotic generator if not previously set
         if self.cgen is None :
@@ -241,9 +276,8 @@ class HECS_PSO (pso.PSO) :
         i = -1
         while True :
             i += 1
-            print("\r{}".format(i), end="")
-            if i == max_iters or \
-            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
+            if print_iters : print("\r{}".format(i), end="")
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
             # Chaotic search
@@ -251,17 +285,17 @@ class HECS_PSO (pso.PSO) :
                 fits_ps = np.array(fitness_q).transpose()
                 for j, fits_p in enumerate(fits_ps) :
                     if ((fits_p - self.obj(gbest.reshape(1, -1)))/fits_p < self.stag_tol).all() :
-                        rad_points = self.particles[j] + self.rrat*(self.rlim - self.llim)*(2*self.cgen.chaosPoints(1) - 1)
-                        obj_cp = np.where(np.logical_and(self.llim.reshape(1, -1) <= rad_points,
-                                                        rad_points <= self.rlim.reshape(1, -1)),
-                                        self.obj(rad_points),
+                        chaos_points = self.particles[j] + self.rrat*(self.rlim - self.llim)*(2*self.cgen.chaosPoints(1) - 1)
+                        obj_cp = np.where(np.logical_and(self.llim.reshape(1, -1) <= chaos_points,
+                                                        chaos_points <= self.rlim.reshape(1, -1)).all(axis=1),
+                                        self.obj(chaos_points),
                                         np.inf)
-                        gbest_p = np.argmin(obj_cp).flatten()
+                        gbest_p = np.argmin(obj_cp).flatten()[0]
 
                         # Update after chaotic search if feasible
                         if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(self.particles[j]) :
-                            self.velocity[j] = self.particles[j] - rad_points[gbest_p]
-                            self.particles[j] = rad_points[gbest_rad_points]
+                            self.velocity[j] = self.particles[j] - chaos_points[gbest_p]
+                            self.particles[j] = chaos_points[gbest_p]
 
             # Perform velocity clipping before running ipcd() to minimize any violations
             self.velocity = pso.vclip(self.velocity, self.vmax)
@@ -270,11 +304,12 @@ class HECS_PSO (pso.PSO) :
             # Perform "Inverse Parabolic Confined Distribution" technique for
             # boundary handling. Also returns updated particle position and velocity
             ######################################################################
-            self.particles, self.velocity = ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
 
             less = self.obj(self.particles) < self.obj(pbest)
             pbest[less] = np.copy(self.particles[less])
             gbest = min(pbest, key = self.objkey)
+            self.conv_curve.append(self.objkey(gbest))
 
             # Appends fitness for tracking whether to enter chaotic search
             fitness_q.append(self.obj(self.particles))
@@ -283,7 +318,9 @@ class HECS_PSO (pso.PSO) :
             r1, r2 = np.random.rand(self.Np, self.D), np.random.rand(self.Np, self.D)
             self.velocity = w*self.velocity + c1*r1*(pbest - self.particles) + c2*r2*(gbest - self.particles)
 
-        return gbest, np.sum((np.abs(self.particles - gbest) < tol).all(axis=1))
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*w)
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)
 
 
 class PWLC_PSO (pso.PSO) :
@@ -309,16 +346,22 @@ class PWLC_PSO (pso.PSO) :
         self.rho = rho
         self.cgen = None
 
-    def __optiminit__ (self) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Piece-wise Linear Chaotic PSO"
+
+    def _optim_init (self) :
         """ Initialiser of certain state variables before the optimization loop """
 
-        pbest, gbest = super().__optiminit__()
+        pbest, gbest = super()._optim_init()
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, max_chaos_iters=500, min_pso_iters=100, max_pso_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+                max_chaos_iters=500, max_pso_iters=10000, tol=1e-2,
+                print_iters=False) :
         """ Optimization loop of plain PSO """
 
-        pbest, gbest = self.__optiminit__()
+        pbest, gbest = self._optim_init()
 
         # Set the chaotic generator if not previously set
         if self.cgen is None :
@@ -337,18 +380,19 @@ class PWLC_PSO (pso.PSO) :
             # Perform "Inverse Parabolic Confined Distribution" technique for
             # boundary handling. Also returns updated particle position and velocity
             ######################################################################
-            self.particles, self.velocity = ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
 
             # Update pbest, gbest
             less = self.obj(self.particles) < self.obj(pbest)
             pbest[less] = np.copy(self.particles[less])
-            gbest_ind = np.argmin(self.obj(pbest)).flatten()
-            gbest = pbest[gbest_ind]
+            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
 
             # Chaotic search
-            cp = gbest + self.rrat*(self.rlim - self.llim)*(2*self.cgen.chaosPoints(1) - 1)
-            obj_cp = np.where(np.logical_and(self.llim.reshape(1,-1) <= cp, cp <= self.rlim.reshape(1,-1)), self.obj(cp), np.inf)
-            gbest_p = np.argmin(obj_cp).flatten()
+            cp = pbest[gbest_ind] + self.rrat*(self.rlim - self.llim)*(2*self.cgen.chaosPoints(1) - 1)
+            obj_cp = np.where(np.logical_and(self.llim.reshape(1,-1) <= cp, cp <= self.rlim.reshape(1,-1)).all(axis=1),
+                            self.obj(cp),
+                            np.inf)
+            gbest_p = np.argmin(obj_cp).flatten()[0]
 
             # Update after chaotic search if feasible
             if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(pbest[gbest_ind]) :
@@ -356,15 +400,18 @@ class PWLC_PSO (pso.PSO) :
                 pbest[gbest_ind] = cp[gbest_p]
                 self.particles[gbest_ind] = pbest[gbest_ind]
 
+            gbest = pbest[gbest_ind]
+            self.conv_curve.append(self.objkey(gbest))
+
             self.rrat *= self.rho
             i += 1
-            print("\r{}".format(i), end="")
-            if i == max_pso_iters or \
-            i > min_pso_iters and (np.abs(self.particles - self.particles[0]) < tol).all() :
+            if print_iters : print("\r{}".format(i), end="")
+            if i == max_pso_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
-        print("\n", end="")
-        return gbest, np.sum((np.abs(self.particles - gbest) < tol).all(axis=1))
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*w)
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)
 
 
 class GB_PSO (pso.PSO) :
@@ -379,22 +426,30 @@ class GB_PSO (pso.PSO) :
 
         super().__init__(obj, llim, rlim, Np, vrat)
 
-    def __optiminit__ (self) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Global-Best PSO"
+
+    def _optim_init (self) :
         self.initParticles()
         gbest = np.copy(min(self.particles, key=self.objkey))
+        self.conv_curve = [self.objkey(gbest)]
         return gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2, min_iters=100, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, alpha=1.2,
+                max_iters=10000, tol=1e-2,
+                print_iters=False) :
         """ Optimization loop of plain PSO """
 
-        gbest = self.__optiminit__()
+        gbest = self._optim_init()
+        p_dists = np.linalg.norm(self.particles - gbest, axis=1)
+        max_dist = np.max(p_dists)
+        r = p_dists.reshape(-1, 1)/max_dist
 
         i = 0
         while True :
             # Velocity update
-            max_dist = np.linalg.norm(gbest)
-            p_dists = np.linalg.norm(self.particles - gbest, axis=1)
-            self.velocity = w*self.velocity + (gbest - self.particles)*p_dists/max_dist
+            self.velocity = w*self.velocity + r*(gbest - self.particles)
 
             # Perform velocity clipping before running ipcd() to minimize any violations
             self.velocity = pso.vclip(self.velocity, self.vmax)
@@ -403,13 +458,20 @@ class GB_PSO (pso.PSO) :
             # Perform "Inverse Parabolic Confined Distribution" technique for
             # boundary handling. Also returns updated particle position and velocity
             ######################################################################
-            self.particles, self.velocity = ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+
+            gbest = min(self.particles, key=self.objkey)
+            self.conv_curve.append(self.objkey(gbest))
+
+            p_dists = np.linalg.norm(self.particles - gbest, axis=1)
+            max_dist = np.max(p_dists)
+            r = p_dists.reshape(-1, 1)/max_dist
 
             i += 1
-            print("\r{}".format(i), end="")
-            if i == max_iters or \
-            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
+            if print_iters : print("\r{}".format(i), end="")
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
-        print("\n", end="")
-        return gbest, np.sum((np.abs(self.particles - gbest) < tol).all(axis=1))
+        grad = lambda x : -r*(x - gbest)/w
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)

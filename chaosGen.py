@@ -88,7 +88,7 @@ class Logistic (ChaosGenerator) :
     r = 4 for full chaos
     """
 
-    def __init__ (self, oshape, cascade=True, r=4, gens=2) :
+    def __init__ (self, oshape, r=4, cascade=True, gens=2) :
         """
         r - logistic bifurcation parameter
         Rest is defined in the parent class
@@ -146,7 +146,7 @@ class InverseLE (ChaosGenerator) :
             1 if np.random.rand() >= 0.5 else 0
         ]))
 
-    def __init__ (self, oshape, cascade=True, le=1.28991999999, gens=2) :
+    def __init__ (self, oshape, le=1.28991999999, cascade=True, gens=2) :
         """
 			le      - The lyapunov exponent whose map has to be found
 			Rest is defined in the base class
@@ -176,7 +176,7 @@ class Tent (ChaosGenerator) :
     """Tent map --> f(x) = 2*x , x <= 0.5 ; 2*(1-x) , x > 0.5
     mu = 0.49999 in the equivalent form for numerical stability"""
 
-    def __init__ (self, oshape, cascade=True, mu=0.49999, gens=2) :
+    def __init__ (self, oshape, mu=0.49999, cascade=True, gens=2) :
         """mu - Tent bifurcation paramater
         Rest is defined in the parent class"""
 
@@ -225,7 +225,7 @@ class Lorenz (ChaosGenerator) :
             ]))\
             (odeint (Lorenz.lorenz, np.random.rand(3), np.linspace (0, 9999, 999999), args = params))
 
-    def __init__ (self, oshape, cascade=True, params=(10, 8.0/3, 28), comp=0, h=0.01, gens=2) :
+    def __init__ (self, oshape, params=(10, 8.0/3, 28), cascade=True, comp=0, h=0.01, gens=2) :
         """"
         params  - (sigma, beta, rho) of lorenz parameters
         comp    - which cdim to consider for chaotic numbers
@@ -242,7 +242,7 @@ class Lorenz (ChaosGenerator) :
         Lorenz.setLimits (params)
 
         ######################################################################
-        # !!!!! IDEA FOR OOP !!!!!!!
+        # !!! IDEA FOR OOP
         # Introduce two subclasses - Normalised, and unnormalised
         # The unnormalised class will have normalisation functions like the one
         # below (Also seen in Henon map)
@@ -324,7 +324,7 @@ class Henon (ChaosGenerator) :
             ])
 
 
-    def __init__ (self, oshape, cascade=True, params=(1.4, 0.3), comp=0, gens=2) :
+    def __init__ (self, oshape, params=(1.4, 0.3), cascade=True, comp=0, gens=2) :
         """
         Constructor for the Henon chaotic map object
         params          - (a, b) parameters of the Henon map
@@ -374,7 +374,7 @@ class Baker (ChaosGenerator) :
                     (2-2x, 1-y/2) 1/2 <= x < 1
     """
 
-    def __init__ (self, oshape, cascade=True, mu=0.49999, comp=0, gens=2) :
+    def __init__ (self, oshape, mu=0.49999, cascade=True, comp=0, gens=2) :
 
         super().__init__ (oshape, oshape+(2,), cascade, gens)
         self.mu = mu
@@ -460,11 +460,12 @@ class Beach () :
 
 
 # Used by CPSO for generating swarms
-ChaosGenerator.cgen = {
+cgen = {
 "log"       : Logistic,
 "lorenz"    : Lorenz,
 "tent"      : Tent,
 "henon"     : Henon,
 "baker"     : Baker,
-"inverse"   : InverseLE
+"inverse"   : InverseLE,
+"beach"		: Beach
 }

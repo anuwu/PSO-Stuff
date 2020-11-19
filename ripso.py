@@ -99,30 +99,58 @@ class RI_PSO (pso.PSO) :
             rlim        - Right limits in each dimension
             vrat        - Velocity limit ratio
         """
+
         super().__init__(obj, llim, rlim, Np, vrat)
         self.hulls = []
 
-    def optimize (self, runs=5, trap_rat=0.25) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO"
 
-        opts = []
-        for _ in range(runs) :
-            opt = self.forward()[0]
-            if opt is None :
+    def optimize (self, runs=5, cent_init_rat=0.5, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters)
+        opt = ret['rets'][0]
+        self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+        for i in range(runs-1) :
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward((min_opt,
+                                np.ceil(cent_init_rat*self.Np).astype(np.uint),
+                                min_hull.max_vert_dist
+                                ),
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
                 break
 
-            opts.append(opt)
-            self.reverse(opt)
+            self.reverse(opt, print_iters=print_iters)
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
 
-        return min(opts, key=self.objkey)
+        if print_iters : print("\n", end="")
+        return min_ret
 
-    def forward (self, c1=2, c2=2, alpha=1.2, beta=0.9, min_iters=100, max_iters=10000, max_chaos_iters=500, tol=1e-2, trap_rat=0.25) :
+    def forward (self, rad_init=None, c1=2, c2=2, alpha=1.2, beta=0.9,
+                max_iters=10000, rad_search_points=500, tol=1e-2, trap_rat=0.20,
+                print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
 
         # Initialise particles and necessary states
-        self.initParticles()
+
+        self.initParticles(rad_init)
         pbest = np.copy(self.particles)
         momentum = np.zeros_like(self.particles)
-        gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
+        gbest = min(pbest, key=self.objkey)
+        self.conv_curve = [self.objkey(gbest)]
         trap = []
 
         i = 0
@@ -130,7 +158,7 @@ class RI_PSO (pso.PSO) :
             # Momentum and velocity update
             r1, r2 = np.random.rand(self.Np, self.D), np.random.rand(self.Np, self.D)
             momentum = beta*momentum + (1-beta)*self.velocity
-            self.velocity = momentum + c1*r1*(pbest - self.particles) + c2*r2*(pbest[gbest_ind] - self.particles)
+            self.velocity = momentum + c1*r1*(pbest - self.particles) + c2*r2*(gbest - self.particles)
 
             # Perform velocity clipping before running ipcd() to minimize any violations
             self.velocity = pso.vclip(self.velocity, self.vmax)
@@ -147,15 +175,13 @@ class RI_PSO (pso.PSO) :
                 for j, qp in enumerate(self.particles) :
                     for hull in self.hulls :
                         if hull.isPointIn(qp) :
-                            # Copying pbest
-                            pbest_tmp = np.array([
+                            # Central about about which radial search occurs within a search radius
+                            rad_cent = pbest[np.argmin(np.array([
                                 np.inf if k == j else self.objkey(pb)
                                 for k, pb in enumerate(pbest)
-                            ])
+                            ])).flatten()[0]]
 
-                            # Central about about which radial search occurs within a search radius
-                            rad_cent = pbest[np.argmin(pbest_tmp)]
-                            rad_points = rad_cent + self.vmax*(2*np.random.rand(max_chaos_iters, self.D) - 1)
+                            rad_points = rad_cent + self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
 
                             # Checking if radial particle violates dimension limits
                             lim_rp = np.logical_or(self.llim.reshape(1, -1) > rad_points, rad_points < self.rlim.reshape(1, -1)).any(axis=1)
@@ -188,22 +214,28 @@ class RI_PSO (pso.PSO) :
             # Update pbest, gbest
             less = self.obj(self.particles) < self.obj(pbest)
             pbest[less] = np.copy(self.particles[less])
-            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
+            gbest = min(pbest, key=self.objkey)
+            self.conv_curve.append(self.objkey(gbest))
 
             i += 1
-            print("\r{}".format(i), end="")
+            if print_iters : print("\rForward = {}".format(i), end="")
+            if i >= 25 and sum(trap[-25:])/25 >= np.ceil(trap_rat*self.Np) :
+                print("\n", end="")
+                return {
+                    'rets'      : tuple(4*[None]),
+                    'kwrets'    : {}
+                }
 
-            if i >= 25 and sum(trap[-25:])/25 >= np.ceil(trap_rat * self.Np) :
-                return tuple(3*[None])
-
-            if i == max_iters or \
-            i > min_iters and (np.abs(self.particles - pbest[gbest_ind]) < tol).all() :
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
-        print("\n", end="")
-        return pbest[gbest_ind], np.sum((np.abs(self.particles - pbest[gbest_ind]) < tol).all(axis=1)), np.array(trap)
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta))
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)
 
-    def reverse (self, opt, w=0.7, c1=2, c2=2, min_iters=50, max_iters=1000) :
+    def reverse (self, opt, w=0.7, c1=2, c2=2,
+                min_iters=50, max_iters=1000,
+                print_iters=False) :
         """ Reverse PSO loop """
 
         xs = opt + 1e-3*(np.random.rand(self.Np, self.D) - 0.5)
@@ -265,7 +297,7 @@ class RI_PSO (pso.PSO) :
             pbest[more] = np.copy(xs[more])
             gbest = min(pbest, key=self.objkey)
 
-            print("\r{}".format(i), end="")
+            if print_iters : print("\rReverse = {}".format(i), end="")
             if i >= min_iters and less.all() :
                 if not less_once :
                     less_once = True
@@ -274,5 +306,4 @@ class RI_PSO (pso.PSO) :
 
         verts = np.copy(np.concatenate((xs, gbest.reshape(1, -1)), axis=0))
         self.hulls.append(Hull(verts))
-
-        print("\n", end="")
+        if print_iters : print("\n", end="")

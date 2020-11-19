@@ -1,11 +1,13 @@
 import numpy as np
 
+# Copied
 def sphere (x) :
     """ sum(xi^2)
     f(0, ... ) = 0
     xi <- [...] """
     return np.sum (np.square(x), axis=1)
 
+# Copied
 def matyas (xy) :
     """ 0.26*(x^2 + y^2) - 0.48xy
     f(0, 0) = 0
@@ -25,6 +27,7 @@ def bulkin (xy) :
                              ))
     + 0.01*np.abs(x + 10)
 
+# Copied
 def rastrigin (x) :
     """ An + sum(xi^2 - Acos(2pi*xi))
     f(0, ...) = 0
@@ -47,6 +50,7 @@ def schaffer2 (xy) :
     y2 = np.square (xy[:,1])
     return 0.5 + (np.square(np.sin(x2 - y2)) - 0.5)/np.square(1 + 0.001*(x2 + y2))
 
+# Copied
 def schaffer4 (xy) :
     """ 0.5 + (cos^2(sin|x^2 - y^2|) - 0.5)/(1 + 0.001(x^2 + y^2))^2
     f(0, 1.25313) = 0.292579

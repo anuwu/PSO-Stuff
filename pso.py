@@ -78,30 +78,59 @@ class PSO () :
         self.Np = Np
         self.D = len(llim)                                          # Only way to obtain the dimensions of the swarm
         self.vrat = vrat
-        self.vmax = vrat*(rlim - llim).reshape(1,-1)                # Maximum velocity for velocity clipping
+        self.vmax = vrat*(rlim - llim).reshape(1,-1)              # Maximum velocity for velocity clipping
+        self.conv_curve = []
 
-    def initParticles (self) :
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Vanilla PSO"
+
+    def _initp (self, Nparts, Nvels=None) :
+        parts = np.array([l + (r-l)*np.random.rand(self.D, Nparts)[ind] \
+                              for ind, l, r in zip(range(0, self.D), self.llim, self.rlim)]).transpose()
+
+        if Nvels is None : Nvels = Nparts
+        vels = np.array([self.vrat*(r-l)*(2*np.random.rand(self.D, Nvels)[ind] - 1)\
+                              for ind, l, r in zip(range(0, self.D), self.llim, self.rlim)]).transpose()
+
+        return parts, vels
+
+    def initParticles (self, rad_init=None) :
         """ Initialises particle position and velocity """
 
-        self.particles = np.array([l + (r-l)*np.random.rand(self.D, self.Np)[ind] \
-                              for ind, l, r in zip(range(0, self.D), self.llim, self.rlim)]).transpose()
+        if rad_init is None :
+            self.particles, self.velocity = self._initp(self.Np)
+        else :
+            rad_cent, rad_ps, min_rad = rad_init
+            rad_points = rad_cent + min_rad + 2*self.vmax*(2*np.random.rand(rad_ps, self.D) - 1)
+            rad_points = rad_points[
+                np.logical_and(
+                self.llim.reshape(1, -1) <= rad_points,
+                rad_points <= self.rlim.reshape(1, -1)
+                ).all(axis=1)
+            ]
+            legit_rad = len(rad_points)
 
-        self.velocity = np.array([self.vrat*(r-l)*(2*np.random.rand(self.D, self.Np)[ind] - 1)\
-                              for ind, l, r in zip(range(0, self.D), self.llim, self.rlim)]).transpose()
+            rand_points, self.velocities = self._initp(self.Np - legit_rad, self.Np)
+            self.particles = np.concatenate([rad_points, rand_points], axis=0)
 
-    def __optiminit__ (self) :
+    def _optim_init (self) :
         """ Initialiser of certain state variables before the optimization loop """
 
         # Initialises swarm position and velocity
         self.initParticles()
         pbest = np.copy(self.particles)
         gbest = np.copy(min(pbest, key = self.objkey))
+
+        self.conv_curve = [self.objkey(gbest)]
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, min_iters=100, max_iters=10000, tol=1e-2) :
+    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+                max_iters=10000, tol=1e-2,
+                print_iters=False) :
         """ Optimization loop of plain PSO """
 
-        pbest, gbest = self.__optiminit__()
+        pbest, gbest = self._optim_init()
 
         i = 0
         while True :
@@ -109,16 +138,42 @@ class PSO () :
             r1, r2 = np.random.rand(self.Np, self.D), np.random.rand(self.Np, self.D)
             self.velocity = w*self.velocity + c1*r1*(pbest - self.particles) + c2*r2*(gbest - self.particles)
 
+            # Perform velocity clipping before running ipcd() to minimize any violations
+            self.velocity = vclip(self.velocity, self.vmax)
+
+            ######################################################################
+            # Perform "Inverse Parabolic Confined Distribution" technique for
+            # boundary handling. Also returns updated particle position and velocity
+            ######################################################################
+            self.particles, self.velocity = ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+
             # pbest, gbest update
             less = self.obj(self.particles) < self.obj(pbest)
             pbest[less] = np.copy(self.particles[less])
             gbest = min(pbest , key=self.objkey)
+            self.conv_curve.append(self.objkey(gbest))
 
             i += 1
             print("\r{}".format(i), end="")
-            if i == max_iters or \
-            i > min_iters and (np.abs(self.particles - gbest) < tol).all() :
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*w)
         print("\n", end="")
-        return gbest, np.sum((np.abs(self.particles - gbest) < tol).all(axis=1))
+        return self.optRet(gbest, grad, tol, i)
+
+    def optRet (self, gbest, grad, tol, iters) :
+        """
+        Returns a tuple of necessary information
+        after completition of optimization loop
+        """
+
+        return {
+            'rets'      : (gbest, grad),
+            'kwrets'    : {
+                'iters'         : iters,
+                'no_conv'       : np.sum((np.abs(self.particles - gbest) < tol).all(axis=1)),
+                'particles'     : np.copy(self.particles),
+                'conv_curve'    : np.array(self.conv_curve)
+            }
+        }
