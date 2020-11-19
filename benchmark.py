@@ -233,6 +233,5 @@ optimizers = {
     'adaswarm'          : cpso.Adaswarm,
     'hecs'              : cpso.HECS_PSO,
     'pwlc'              : cpso.PWLC_PSO,
-    'gb'                : cpso.GB_PSO,
     'ripso'             : ripso.RI_PSO
 }
