@@ -1,6 +1,6 @@
 import numpy as np
 
-class Benchmark () :
+class Bench () :
     """
     Class that benchmarks a PSO variant. Implements the following metrics -
         1. Iterations
@@ -30,7 +30,7 @@ class Benchmark () :
     @property
     def objkey (self) :
         """ Returns the objective function for single domain point """
-        return lambda x : self.obj(x.reshape(-1, 1))[0]
+        return lambda x : self.obj(x.reshape(1, -1))[0]
 
     def eval (self, runs, succ_tol=1e-2, print_iters=True) :
         """ Evaluates the optimizer and computes benchmark properties """
@@ -106,7 +106,7 @@ class Sphere (Bench) :
         super().__init__(pso_class)
         self.obj_str = "Sphere"
         self.dims = dims
-        self.llim, self.rlim = np.repeat(-np.inf, dims), np.repeat(np.inf, dims)
+        self.llim, self.rlim = np.repeat(-1000, dims), np.repeat(1000, dims)
         self.argmins = np.repeat(0, dims).reshape(1, -1)
         self.min = 0
 
@@ -356,7 +356,7 @@ class RosenbrockND (Bench) :
         super().__init__(pso_class)
         self.obj_str = "RosenbrockND"
         self.dims = dims
-        self.llim, self.rlim = np.repeat(-np.inf, dims), np.repeat(np.inf, dims)
+        self.llim, self.rlim = np.repeat(-1000, dims), np.repeat(1000, dims)
         self.argmins = np.repeat(1, dims).reshape(1, -1)
         self.min = 0
 
@@ -378,14 +378,14 @@ class Rosenbrock2D (Bench) :
         xi <- [...]
     """
 
-    def __init__ (self, pso_class, dims, Np=25) :
+    def __init__ (self, pso_class, Np=25) :
         """ Constructor for rosenbrock2D benchmark function """
 
         super().__init__(pso_class)
         self.obj_str = "Rosenbrock2D"
-        self.dims = dims
-        self.llim, self.rlim = np.repeat(-np.inf, dims), np.repeat(np.inf, dims)
-        self.argmins = np.repeat(0, dims).reshape(1, -1)
+        self.dims = 2
+        self.llim, self.rlim = np.repeat(-1000, 2), np.repeat(1000, 2)
+        self.argmins = np.repeat(0, 2).reshape(1, -1)
         self.min = 0
 
     @property
@@ -982,33 +982,33 @@ class Ada4 (Bench) :
 
 
 benches = {
-    'matyas'            : lambda p          : Matyas(p),
-    'bulkin'            : lambda p          : Bulkin(p),
-    'schaffer2'         : lambda p          : Schaffer2(p),
-    'schaffer4'         : lambda p          : Schaffer4(p),
-    'schaffer6'         : lambda p          : Schaffer6(p),
-    'ackley'            : lambda p          : Ackley(p),
-    'beale'             : lambda p          : Beale(p),
-    'goldstein'         : lambda p          : Goldstein(p),
-    'booth'             : lambda p          : Booth(p),
-    'eggholder'         : lambda p          : Eggholder(p),
-    'easom'             : lambda p          : Easom(p),
-    'mccormick'         : lambda p          : McCormick(p),
-    'holdertable'       : lambda p          : Holdertable(p),
-    'crossintray'       : lambda p          : Crossintray(p),
-    'threehumpcamel'    : lambda p          : Threehumpcamel(p),
-    'himmelblau'        : lambda p          : Himmelblau(p),
-    'levi'              : lambda p          : Levi(p),
-    'anuwu'             : lambda p          : Anuwu(p),
-    'ada1'              : lambda p          : Ada1(p),
-    'ada2'              : lambda p          : Ada2(p),
-    'ada3'              : lambda p          : Ada3(p),
-    'ada4'              : lambda p          : Ada4(p),
-    'sphere'            : lambda p, dims    : Sphere(p, dims),
-    'griewank'          : lambda p, dims    : Griewank(p, dims),
-    'rastrigin'         : lambda p, dims    : Rastrigin(p, dims),
-    'rosenbrockND'      : lambda p, dims    : RosenbrockND(p, dims),
-    'rosenbrock2D'      : lambda p, dims    : Rosenbrock2D(p, dims),
-    'alpine'            : lambda p, dims    : Alpine(p, dims),
-    'styblinski'        : lambda p, dims    : Styblinski(p, dims)
+    'matyas'            : lambda p              : Matyas(p),
+    'bulkin'            : lambda p              : Bulkin(p),
+    'schaffer2'         : lambda p              : Schaffer2(p),
+    'schaffer4'         : lambda p              : Schaffer4(p),
+    'schaffer6'         : lambda p              : Schaffer6(p),
+    'ackley'            : lambda p              : Ackley(p),
+    'beale'             : lambda p              : Beale(p),
+    'goldstein'         : lambda p              : Goldstein(p),
+    'booth'             : lambda p              : Booth(p),
+    'eggholder'         : lambda p              : Eggholder(p),
+    'easom'             : lambda p              : Easom(p),
+    'mccormick'         : lambda p              : McCormick(p),
+    'holdertable'       : lambda p              : Holdertable(p),
+    'crossintray'       : lambda p              : Crossintray(p),
+    'threehumpcamel'    : lambda p              : Threehumpcamel(p),
+    'himmelblau'        : lambda p              : Himmelblau(p),
+    'levi'              : lambda p              : Levi(p),
+    'anuwu'             : lambda p              : Anuwu(p),
+    'ada1'              : lambda p              : Ada1(p),
+    'ada2'              : lambda p              : Ada2(p),
+    'ada3'              : lambda p              : Ada3(p),
+    'ada4'              : lambda p              : Ada4(p),
+    'rosenbrock2D'      : lambda p              : Rosenbrock2D(p),
+    'sphere'            : lambda p, dims=5      : Sphere(p, dims),
+    'griewank'          : lambda p, dims=5      : Griewank(p, dims),
+    'rastrigin'         : lambda p, dims=5      : Rastrigin(p, dims),
+    'rosenbrockND'      : lambda p, dims=5      : RosenbrockND(p, dims),
+    'alpine'            : lambda p, dims=5      : Alpine(p, dims),
+    'styblinski'        : lambda p, dims=5      : Styblinski(p, dims)
 }

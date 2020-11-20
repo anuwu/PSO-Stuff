@@ -260,10 +260,8 @@ class RI_PSO (pso.PSO) :
                         for nx in nxs
                     ])
                 pb_past = fs
-                gb = gbest
             else :
                 pb_past = xs
-                gb = opt
 
             # Each dimension of a particle has an associated update matrix
             mats = np.array([
