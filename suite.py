@@ -61,11 +61,7 @@ class Suite () :
 
         df_col = ['pso_type'] + df_keys
 
-        i = 0
         for bname, bench in bm.benches.items() :
-            if i == 2 :
-                break
-
             print(f"On bench {bname}")
             self.specs[bname] = {}
             for pi, pc in zip(self.pso_ids, self.pso_classes) :
@@ -97,4 +93,3 @@ class Suite () :
             plt.close()
 
             print("\n", end="")
-            i += 1
