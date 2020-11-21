@@ -32,7 +32,7 @@ class Bench () :
         """ Returns the objective function for single domain point """
         return lambda x : self.obj(x.reshape(1, -1))[0]
 
-    def eval (self, runs, succ_tol=1e-2, print_iters=True) :
+    def eval (self, runs, succ_tol=1e-2, print_iters=False) :
         """ Evaluates the optimizer and computes benchmark properties """
 
         # Running specs
@@ -48,7 +48,9 @@ class Bench () :
 
         min_conv_curve, max_conv_curve = None, None
         min_iters, max_iters = np.inf, 0
-        for _ in range(runs) :
+        for i in range(runs) :
+            if not print_iters : print(f"Run {i+1}")
+
             mizer = self.pso_class(self.obj, self.llim, self.rlim, self.Np)
             retpack = mizer.optimize(print_iters=print_iters)
 
@@ -173,9 +175,8 @@ class Bulkin (Bench) :
         def f (xy) :
             x, y = xy[:,0], xy[:,1]
             return 100*np.sqrt(np.abs(
-                                     y - 0.01*np.square(x)
-            ))
-            + 0.01*np.abs(x + 10)
+                y - 0.01*np.square(x)
+            )) + 0.01*np.abs(x + 10)
 
         return f
 
@@ -298,8 +299,8 @@ class Griewank (Bench) :
     def obj (self) :
         """ Objective function """
         def f (X) :
-            return 1 + np.sum(np.square(x), axis=1)/4000 - \
-            np.prod(np.cos(x/np.sqrt(np.arange(1, x.shape[1]+1, 1))), axis=1)
+            return 1 + np.sum(np.square(X), axis=1)/4000 - \
+            np.prod(np.cos(X/np.sqrt(np.arange(1, X.shape[1]+1, 1))), axis=1)
 
         return f
 
@@ -942,7 +943,7 @@ class Ada3 (Bench) :
     @property
     def obj (self) :
         """ Objective function """
-        return (lambda x2 : -np.exp(np.cos(x2)) + x2)(np.square(x))
+        return lambda x : (lambda x2 : -np.exp(np.cos(x2)) + x2)(np.square(x))
 
     @property
     def objder (self) :

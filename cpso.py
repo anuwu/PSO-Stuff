@@ -17,17 +17,14 @@ class Adaswarm (pso.PSO) :
 
         def ret_swarm (obj, llim, rlim, Np) :
             D = len(llim)
-            init_cmap = swarm_args['init_cmap']['name']
-            init_args = swarm_args['init_cmap']['args']
-            dyn_cmap = swarm_args['dyn_cmap']['name']
-            dyn_args = swarm_args['dyn_cmap']['args']
-            init_args = ((Np, D), ) + init_args
-            dyn_args = ((Np, D), ) + dyn_args
 
-            return Adaswarm(obj, llim, rlim, Np,
-                lambda x : cg.cgen[init_cmap](*init_args).chaosPoints(x),
-                lambda x : cg.cgen[dyn_cmap](*dyn_args).chaosPoints(x),
-            )
+            # Returns the chaotic generator
+            get_gen = lambda dic : \
+                    None if dic is None else \
+                    lambda x : cg.cgen[dic['name']](*(((Np, D), ) + dic['args'])).chaosPoints(x)
+
+            initgen, randgen = get_gen(swarm_args['init_cmap']), get_gen(swarm_args['dyn_cmap'])
+            return Adaswarm(obj, llim, rlim, Np, initgen, randgen)
 
         return ret_swarm
 

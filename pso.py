@@ -154,12 +154,12 @@ class PSO () :
             self.conv_curve.append(self.objkey(gbest))
 
             i += 1
-            print("\r{}".format(i), end="")
+            if print_iters : print("\r{}".format(i), end="")
             if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
         grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*w)
-        print("\n", end="")
+        if print_iters : print("\n", end="")
         return self.optRet(gbest, grad, tol, i)
 
     def optRet (self, gbest, grad, tol, iters) :

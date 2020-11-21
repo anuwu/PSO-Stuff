@@ -425,6 +425,7 @@ class Beach () :
 	def __init__ (self, oshape, R=20, blim=1e4) :
 		""" Beach constructor """
 
+		self.oshape = oshape
 		self.R = R
 		self.blim = blim
 		self.blim_inv = 1/blim
@@ -443,14 +444,14 @@ class Beach () :
 		for _ in range(self.R) :
 			self.x = self.bmap(self.x, self.b)
 
-		self.r = Logistic(self.r)
+		self.r = logistic(self.r)
 		if self.r <= self.blim_inv :
 			self.r = self.x if self.x >= self.blim_inv else self.blim_inv
 
 		self.b = Beach.robust_lim + self.r*(self.blim - Beach.robust_lim)
 		return ret
 
-	def chaosPoints (self) :
+	def chaosPoints (self, _) :
 		""" Generates PSRNs with a given shape """
 
 		Np, D = self.oshape

@@ -1,3 +1,8 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 import pso
 import cpso
 import ripso
@@ -17,18 +22,79 @@ class Suite () :
     against a variety of toy functions
     """
 
-    def __init__ (self, pso_classes) :
+    def __check_env__ (self) :
+        """ Creates the folder environment where the benchmark
+        results would be stored """
+
+        if not os.path.isdir("Results") :
+            os.mkdir("Results")
+
+        self.suite_fold = os.path.join("Results", self.suite_name)
+        if not os.path.isdir(self.suite_fold) :
+            os.mkdir(self.suite_fold)
+
+
+    def __init__ (self, suite_name, pso_ids, pso_classes) :
         """
         Constructor of benchmarking suite with a list of
         PSO Optimizers ready to be intialised
         """
 
+        self.suite_name = suite_name
+        self.pso_ids = pso_ids
         self.pso_classes = pso_classes
         self.specs = {}
 
-    def eval (self, bench_iters=50) :
+        self.__check_env__ ()
+
+    def eval (self, bench_iters=50, print_iters=False) :
         """ Performs the suite of benchmarks """
 
+        df_keys = [
+        'mean_iters',
+        'mean_minima',
+        'mean_mean_fitness',
+        'mean_min_err',
+        'mean_argmin_err',
+        'succ_ratio'
+        ]
+
+        df_col = ['pso_type'] + df_keys
+
+        i = 0
         for bname, bench in bm.benches.items() :
-            for pc in self.pso_classes :
-                self.specs[bname] = bench(pc).eval(bench_iters, print_iters=False)
+            if i == 2 :
+                break
+
+            print(f"On bench {bname}")
+            self.specs[bname] = {}
+            for pi, pc in zip(self.pso_ids, self.pso_classes) :
+                print(f"Marking {pi}")
+                self.specs[bname][pi] = bench(pc).eval(bench_iters, print_iters=print_iters)
+
+            # Saving ospecs to csv
+            bname_dat = [
+            [pso_id] + [spec['ospec'][k] for k in df_keys]
+            for pso_id, spec in self.specs[bname].items()
+            ]
+            df = pd.DataFrame(bname_dat, columns=df_col)
+            df.to_csv(os.path.join(self.suite_fold, f"{bname}_ospec.csv"), index=False)
+
+            fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios' : [1, 1]})
+            fig.set_figheight(5)
+            fig.set_figwidth(10)
+
+            # Saving best convergence curve
+            for pi in self.pso_ids :
+                ax[0].plot(self.specs[bname][pi]['ospec']['conv_curves'][0][:50], label=pi)
+                ax[1].plot(self.specs[bname][pi]['ospec']['conv_curves'][1][:50], label=pi)
+
+            ax[0].set_title('Best Convergence')
+            ax[1].set_title('Worst Convergence')
+            ax[0].legend()
+            ax[1].legend()
+            fig.savefig(os.path.join(self.suite_fold, f"{bname}_conv.png"))
+            plt.close()
+
+            print("\n", end="")
+            i += 1
