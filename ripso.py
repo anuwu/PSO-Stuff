@@ -113,10 +113,15 @@ class RI_PSO (pso.PSO) :
         if print_iters : print("Run 1")
         ret = self.forward(print_iters=print_iters)
         opt = ret['rets'][0]
-        self.reverse(opt, print_iters=print_iters)
+        rev_iters = self.reverse(opt, print_iters=print_iters)
 
         min_opt, min_optval = opt, self.objkey(opt)
         min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
         for i in range(runs-1) :
             if print_iters : print(f"Run {i+2}")
             ret = self.forward((min_opt,
@@ -130,7 +135,9 @@ class RI_PSO (pso.PSO) :
             if opt is None or i == runs - 2 :
                 break
 
-            self.reverse(opt, print_iters=print_iters)
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                break
+
             optval = self.objkey(opt)
             if optval < min_optval :
                 min_opt, min_optval = opt, optval
@@ -304,4 +311,6 @@ class RI_PSO (pso.PSO) :
 
         verts = np.copy(np.concatenate((xs, gbest.reshape(1, -1)), axis=0))
         self.hulls.append(Hull(verts))
+
         if print_iters : print("\n", end="")
+        return i

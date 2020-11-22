@@ -98,6 +98,7 @@ class Adaswarm (pso.PSO) :
 
         pbest, gbest = super()._optim_init()
         momentum = np.zeros_like(self.particles)
+        self.__setcache__()
         self.appendCache(self.particles, self.velocity, momentum, pbest, gbest)
         return momentum, pbest, gbest
 

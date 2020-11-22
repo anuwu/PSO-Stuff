@@ -9,11 +9,11 @@ import ripso
 import benchmark as bm
 
 optimizers = {
-    'vanilla'           : pso.PSO,
-    'adaswarm'          : cpso.Adaswarm,
-    'hecs'              : cpso.HECS_PSO,
-    'pwlc'              : cpso.PWLC_PSO,
-    'ripso'             : ripso.RI_PSO
+    'vanilla'       : pso.PSO,
+    'adaswarm'      : cpso.Adaswarm,
+    'hecs'          : cpso.HECS_PSO,
+    'pwlc'          : cpso.PWLC_PSO,
+    'ripso'         : ripso.RI_PSO
 }
 
 class Suite () :
@@ -62,6 +62,11 @@ class Suite () :
         df_col = ['pso_type'] + df_keys
 
         for bname, bench in bm.benches.items() :
+            spec_csv = os.path.join(self.suite_fold, f"{bname}_ospec.csv")
+            conv_png = os.path.join(self.suite_fold, f"{bname}_conv.png")
+            if os.path.exists(spec_csv) and os.path.exists(conv_png) :
+                continue
+
             print(f"On bench {bname}")
             self.specs[bname] = {}
             for pi, pc in zip(self.pso_ids, self.pso_classes) :
@@ -74,7 +79,7 @@ class Suite () :
             for pso_id, spec in self.specs[bname].items()
             ]
             df = pd.DataFrame(bname_dat, columns=df_col)
-            df.to_csv(os.path.join(self.suite_fold, f"{bname}_ospec.csv"), index=False)
+            df.to_csv(spec_csv, index=False)
 
             fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios' : [1, 1]})
             fig.set_figheight(5)
@@ -85,11 +90,12 @@ class Suite () :
                 ax[0].plot(self.specs[bname][pi]['ospec']['conv_curves'][0][:50], label=pi)
                 ax[1].plot(self.specs[bname][pi]['ospec']['conv_curves'][1][:50], label=pi)
 
+            # Titles, legend and saving figure to disk
             ax[0].set_title('Best Convergence')
             ax[1].set_title('Worst Convergence')
             ax[0].legend()
             ax[1].legend()
-            fig.savefig(os.path.join(self.suite_fold, f"{bname}_conv.png"))
+            fig.savefig(conv_png)
             plt.close()
 
             print("\n", end="")

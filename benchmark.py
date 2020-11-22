@@ -48,12 +48,11 @@ class Bench () :
 
         min_conv_curve, max_conv_curve = None, None
         min_iters, max_iters = np.inf, 0
+        mizer = self.pso_class(self.obj, self.llim, self.rlim, self.Np)
         for i in range(runs) :
             if not print_iters : print(f"Run {i+1}")
 
-            mizer = self.pso_class(self.obj, self.llim, self.rlim, self.Np)
             retpack = mizer.optimize(print_iters=print_iters)
-
             opt = retpack['rets'][0]
             iters = retpack['kwrets']['iters']
             opt_val = self.objkey(opt)
