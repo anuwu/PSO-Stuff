@@ -11,7 +11,6 @@ import benchmark as bm
 optimizers = {
     'vanilla'       : pso.PSO,
     'adaswarm'      : cpso.Adaswarm,
-    'hecs'          : cpso.HECS_PSO,
     'pwlc'          : cpso.PWLC_PSO,
     'ripso'         : ripso.RI_PSO
 }
