@@ -125,7 +125,7 @@ class PSO () :
         self.conv_curve = [self.objkey(gbest)]
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+    def optimize (self, w=0.7, c1=1.7, c2=1.7, alpha=1.2,
                 max_iters=10000, tol=1e-2,
                 print_iters=False) :
         """ Optimization loop of plain PSO """

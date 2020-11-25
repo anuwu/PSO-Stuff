@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 
 import pso
 import cpso
-import ripso
+import rpso
 import benchmark as bm
 
 optimizers = {
     'vanilla'       : pso.PSO,
     'adaswarm'      : cpso.Adaswarm,
     'pwlc'          : cpso.PWLC_PSO,
-    'ripso'         : ripso.RI_PSO
+    'ripso'         : rpso.RI_PSO,
+    'ricpso'        : rpso.RIC_PSO
 }
 
 class Suite () :
@@ -53,6 +54,7 @@ class Suite () :
         'mean_iters',
         'mean_minima',
         'mean_mean_fitness',
+        'mean_no_conv',
         'mean_min_err',
         'mean_argmin_err',
         'succ_ratio'

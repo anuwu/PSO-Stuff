@@ -146,7 +146,7 @@ class RI_PSO (pso.PSO) :
         if print_iters : print("\n", end="")
         return min_ret
 
-    def forward (self, rad_init=None, c1=2, c2=2, alpha=1.2, beta=0.9,
+    def forward (self, rad_init=None, c1=0.7, c2=0.7, alpha=1.2, beta=0.9,
                 max_iters=10000, rad_search_points=500, tol=1e-2, trap_rat=0.20,
                 print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
@@ -211,7 +211,7 @@ class RI_PSO (pso.PSO) :
                             # Replace original particle with best radial particle
                             self.particles[j] = rad_points[gbest_rp]
                             pbest[j] = self.particles[j]
-                            self.velocity[j] = rad_cent - self.particles[j]
+                            self.velocity[j] = self.particles[j] - rad_cent
                             self.velocity[j] = self.vmax*self.velocity[j]/np.linalg.norm(self.velocity[j])
                             momentum[j] = 0
 
@@ -240,7 +240,7 @@ class RI_PSO (pso.PSO) :
         if print_iters : print("\n", end="")
         return self.optRet(gbest, grad, tol, i)
 
-    def reverse (self, opt, w=0.7, c1=2, c2=2,
+    def reverse (self, opt, w=0.7, c1=1.7, c2=1.7,
                 min_iters=50, max_iters=1000,
                 print_iters=False) :
         """ Reverse PSO loop """

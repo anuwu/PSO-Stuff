@@ -43,7 +43,6 @@ class Bench () :
             'no_conv'       : [],
             'min_err'       : [],
             'argmin_err'    : [],
-            'iters'         : []
         }
 
         min_conv_curve, max_conv_curve = None, None
@@ -88,7 +87,7 @@ class Bench () :
         }
 
         ospec['conv_curves'] = (min_conv_curve, max_conv_curve)
-        ospec['succ_ratio'] = np.sum(rspec['argmin_err'] < succ_tol)/iters
+        ospec['succ_ratio'] = np.sum(rspec['argmin_err'] < succ_tol)/runs
         self.spec['rspec'] = rspec
         self.spec['ospec'] = ospec
 
@@ -983,7 +982,7 @@ class Ada4 (Bench) :
         return lambda x : 15*np.power(x, 14) - np.cos(x) + 6*np.exp(np.power(x, 6))*np.power(x, 5)
 
 
-benches = {
+all_benches = {
     'matyas'            : lambda p              : Matyas(p),
     'bulkin'            : lambda p              : Bulkin(p),
     'schaffer2'         : lambda p              : Schaffer2(p),
@@ -1001,11 +1000,7 @@ benches = {
     'threehumpcamel'    : lambda p              : Threehumpcamel(p),
     'himmelblau'        : lambda p              : Himmelblau(p),
     'levi'              : lambda p              : Levi(p),
-    'anuwu'             : lambda p              : Anuwu(p),
-    'ada1'              : lambda p              : Ada1(p),
-    'ada2'              : lambda p              : Ada2(p),
-    'ada3'              : lambda p              : Ada3(p),
-    'ada4'              : lambda p              : Ada4(p),
+    'rastrigin2D'       : lambda p              : Rastrigin(p, 2),
     'rosenbrock2D'      : lambda p              : Rosenbrock2D(p),
     'sphere'            : lambda p, dims=5      : Sphere(p, dims),
     'griewank'          : lambda p, dims=5      : Griewank(p, dims),
@@ -1013,4 +1008,24 @@ benches = {
     'rosenbrockND'      : lambda p, dims=5      : RosenbrockND(p, dims),
     'alpine'            : lambda p, dims=5      : Alpine(p, dims),
     'styblinski'        : lambda p, dims=5      : Styblinski(p, dims)
+}
+
+test_benches = {
+    'matyas'            : lambda p              : Matyas(p),
+    'bulkin'            : lambda p              : Bulkin(p),
+    'ackley'            : lambda p              : Ackley(p),
+    'beale'             : lambda p              : Beale(p),
+    'goldstein'         : lambda p              : Goldstein(p),
+    'booth'             : lambda p              : Booth(p),
+    'easom'             : lambda p              : Easom(p),
+    'crossintray'       : lambda p              : Crossintray(p),
+    'threehumpcamel'    : lambda p              : Threehumpcamel(p),
+    'himmelblau'        : lambda p              : Himmelblau(p),
+    'levi'              : lambda p              : Levi(p),
+    'rosenbrock2D'      : lambda p              : Rosenbrock2D(p),
+    'rastrigin2D'       : lambda p              : Rastrigin(p, 2),
+    'griewank'          : lambda p, dims=5      : Griewank(p, dims),
+    'rastrigin'         : lambda p, dims=5      : Rastrigin(p, dims),
+    'rosenbrockND'      : lambda p, dims=5      : RosenbrockND(p, dims),
+    'alpine'            : lambda p, dims=5      : Alpine(p, dims),
 }

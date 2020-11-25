@@ -102,7 +102,7 @@ class Adaswarm (pso.PSO) :
         self.appendCache(self.particles, self.velocity, momentum, pbest, gbest)
         return momentum, pbest, gbest
 
-    def optimize (self, c1=2, c2=2, alpha=1.2, beta=0.9,
+    def optimize (self, c1=0.7, c2=0.7, alpha=1.2, beta=0.9,
                 max_iters=10000, tol=1e-2,
                 print_iters=False) :
         """
@@ -176,7 +176,7 @@ class Adaswarm (pso.PSO) :
             self.r1cache = np.array(self.r1cache)
             self.r2cache = np.array(self.r2cache)
 
-    def replay (self, seed, c1=2, c2=2, alpha=1.2, beta=0.9) :
+    def replay (self, seed, c1=0.7, c2=0.7, alpha=1.2, beta=0.9) :
         """
         Given a pre-determined sequence of r1, r2 and a starting
         position, velocity and momentum, replays the PSO trajectory
@@ -208,7 +208,7 @@ class Adaswarm (pso.PSO) :
             mom = beta*mom + (1-beta)*vel
             vel = mom + c1*r1*(pb - part) + c2*r2*(gb - part)
             vel = pso.vclip(vel, self.vmax)
-            part, vel = ipcd(part, vel, self.llim, self.rlim, alpha)
+            part, vel = pso.ipcd(part, vel, self.llim, self.rlim, alpha)
 
             less = self.obj(part) < self.obj(pb)
             pb[less] = part[less]
@@ -260,7 +260,7 @@ class HECS_PSO (pso.PSO) :
         fitness_q.append(self.obj(self.particles))
         return fitness_q, pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+    def optimize (self, w=0.7, c1=1.7, c2=1.7, alpha=1.2,
                 max_iters=10000, tol=1e-2,
                 print_iters=False) :
         """ Runs the PSO loop """
@@ -354,7 +354,7 @@ class PWLC_PSO (pso.PSO) :
         pbest, gbest = super()._optim_init()
         return pbest, gbest
 
-    def optimize (self, w=0.7, c1=2, c2=2, alpha=1.2,
+    def optimize (self, w=0.7, c1=1.7, c2=1.7, alpha=1.2,
                 max_chaos_iters=500, max_pso_iters=10000, tol=1e-2,
                 print_iters=False) :
         """ Optimization loop of plain PSO """
