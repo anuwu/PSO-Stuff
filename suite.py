@@ -61,7 +61,7 @@ class Suite () :
 
         df_col = ['pso_type'] + df_keys
 
-        for bname, bench in bm.benches.items() :
+        for bname, bench in bm.test_benches.items() :
             spec_csv = os.path.join(self.suite_fold, f"{bname}_ospec.csv")
             conv_png = os.path.join(self.suite_fold, f"{bname}_conv.png")
             if os.path.exists(spec_csv) and os.path.exists(conv_png) :

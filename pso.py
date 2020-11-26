@@ -155,6 +155,8 @@ class PSO () :
 
             i += 1
             if print_iters : print("\r{}".format(i), end="")
+
+            # Stopping criteria
             if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 

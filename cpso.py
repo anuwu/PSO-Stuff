@@ -142,6 +142,8 @@ class Adaswarm (pso.PSO) :
 
             i += 1
             if print_iters : print("\r{}".format(i), end="")
+
+            # Stopping criteria
             if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
@@ -275,6 +277,8 @@ class HECS_PSO (pso.PSO) :
         while True :
             i += 1
             if print_iters : print("\r{}".format(i), end="")
+
+            # Stopping criteria
             if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
@@ -394,17 +398,19 @@ class PWLC_PSO (pso.PSO) :
 
             # Update after chaotic search if feasible
             if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(pbest[gbest_ind]) :
-                self.velocity[gbest_ind] = cp[gbest_p] - self.particles[gbest_ind]
-                self.velocity = np.random.rand(self.D)*self.vmax*self.velocity[j]/np.linalg.norm(self.velocity[j])
-                pbest[gbest_ind] = cp[gbest_p]
-                self.particles[gbest_ind] = pbest[gbest_ind]
+                new_vel = cp[gbest_p] - self.particles[gbest_ind]
+                self.velocity[gbest_ind] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
+                pbest[gbest_ind] = self.particles[gbest_ind] = cp[gbest_p]
 
+            # Copy gbest
             gbest = pbest[gbest_ind]
             self.conv_curve.append(self.objkey(gbest))
             self.rrat *= self.rho
 
             i += 1
             if print_iters : print("\r{}".format(i), end="")
+
+            # Stopping criteria
             if i == max_pso_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 

@@ -91,7 +91,7 @@ class Hull () :
 class RILC_PSO (pso.PSO) :
     """ Reverse-Informed with Local-Search Particle Swarm Optimizer """
 
-    def __init__ (self, obj, llim, rlim, Np, rrat=0.8, rho=0.9, vrat=0.1) :
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
         """
         Constructor of base PSO optimizer -
             obj         - Objective function to minimize
@@ -101,8 +101,6 @@ class RILC_PSO (pso.PSO) :
         """
 
         super().__init__(obj, llim, rlim, Np, vrat)
-        self.rrat = rrat
-        self.rho = rho
         self.hulls = []
 
     def __str__ (self) :
@@ -111,6 +109,7 @@ class RILC_PSO (pso.PSO) :
 
     def optimize (self, runs=5, cent_init_rat=0.5, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
+
 
         if print_iters : print("Run 1")
         ret = self.forward(print_iters=print_iters)
@@ -124,12 +123,16 @@ class RILC_PSO (pso.PSO) :
             if print_iters : print("\n", end="")
             return min_ret
 
+        local_div = 0
         for i in range(runs-1) :
+            local_div += 25
             if print_iters : print(f"Run {i+2}")
-            ret = self.forward((min_opt,
-                                np.ceil(cent_init_rat*self.Np).astype(np.uint),
-                                min_hull.max_vert_dist
-                                ),
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(cent_init_rat*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                local_div=local_div,
                 print_iters=print_iters
             )
 
@@ -149,7 +152,7 @@ class RILC_PSO (pso.PSO) :
         return min_ret
 
     def forward (self, rad_init=None, c1=1, c2=1, alpha=1.2, beta=0.9,
-                max_iters=10000, local_div=10, rad_search_points=500, local_iters=500,
+                max_iters=10000, local_div=None, rad_search_points=500, local_iters=500,
                 tol=1e-2, trap_rat=0.20,
                 print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
@@ -179,25 +182,9 @@ class RILC_PSO (pso.PSO) :
             ######################################################################
             self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
 
-            # Update pbest, gbest
-            less = self.obj(self.particles) < self.obj(pbest)
-            pbest[less] = np.copy(self.particles[less])
-            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
-
+            # Hull exclusion
             trap.append(0)
-            if not self.hulls :     # Locals search
-                cp = pbest[gbest_ind] + self.rrat*(self.rlim - self.llim)*np.random.rand(local_iters, self.D)
-                obj_cp = np.where(np.logical_and(self.llim.reshape(1,-1) <= cp, cp <= self.rlim.reshape(1,-1)).all(axis=1),
-                                self.obj(cp),
-                                np.inf)
-                gbest_p = np.argmin(obj_cp).flatten()[0]
-
-                # Update after chaotic search if feasible
-                if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(pbest[gbest_ind]) :
-                    self.velocity[gbest_ind] = 0
-                    pbest[gbest_ind] = cp[gbest_p]
-                    self.particles[gbest_ind] = pbest[gbest_ind]
-            else :                 # Hull exclusion
+            if self.hulls != [] :
                 for j, qp in enumerate(self.particles) :
                     for hull in self.hulls :
                         if hull.isPointIn(qp) :
@@ -237,12 +224,45 @@ class RILC_PSO (pso.PSO) :
                             trap[-1] += 1
                             break
 
+            # Update pbest, gbest
+            less = self.obj(self.particles) < self.obj(pbest)
+            pbest[less] = np.copy(self.particles[less])
+            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
+
+            # Local search
+            local_search = False
+            if self.hulls == [] or (i > 0 and not (i % local_div)) :
+                lp = pbest[gbest_ind] + 2*self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
+                lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
+                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
+                else np.array([
+                    not np.array([
+                        hull.isPointIn(qp)
+                        for hull in self.hulls
+                    ]).any()
+                    for qp in lp
+                ])
+
+                obj_lp = np.where(np.logical_and(lp_in_lims, lp_out_hulls),
+                                self.obj(lp),
+                                np.inf)
+                gbest_p = np.argmin(obj_lp).flatten()[0]
+                local_search = True
+
+            # Reset gbest if local search is true
+            if local_search and obj_lp[gbest_p] != np.inf and obj_lp[gbest_p] < self.objkey(pbest[gbest_ind]) :
+                self.velocity[gbest_ind] = 0
+                pbest[gbest_ind] = lp[gbest_p]
+                self.particles[gbest_ind] = pbest[gbest_ind]
+
+            # Copy gbest
             gbest = pbest[gbest_ind]
             self.conv_curve.append(self.objkey(gbest))
-            self.rrat *= self.rho
 
             i += 1
             if print_iters : print("\rForward = {}".format(i), end="")
+
+            # Trapping condition
             if i >= 25 and sum(trap[-25:])/25 >= np.ceil(trap_rat*self.Np) :
                 if print_iters : print("\n", end="")
                 return {
@@ -250,6 +270,7 @@ class RILC_PSO (pso.PSO) :
                     'kwrets'    : {}
                 }
 
+            # Stopping criteria
             if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
                 break
 
