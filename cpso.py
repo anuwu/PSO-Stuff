@@ -102,7 +102,7 @@ class Adaswarm (pso.PSO) :
         self.appendCache(self.particles, self.velocity, momentum, pbest, gbest)
         return momentum, pbest, gbest
 
-    def optimize (self, c1=0.7, c2=0.7, alpha=1.2, beta=0.9,
+    def optimize (self, c1=1, c2=1, alpha=1.2, beta=0.9,
                 max_iters=10000, tol=1e-2,
                 print_iters=False) :
         """
@@ -355,7 +355,7 @@ class PWLC_PSO (pso.PSO) :
         return pbest, gbest
 
     def optimize (self, w=0.7, c1=1.7, c2=1.7, alpha=1.2,
-                max_chaos_iters=500, max_pso_iters=10000, tol=1e-2,
+                chaos_iters=500, max_pso_iters=10000, tol=1e-2,
                 print_iters=False) :
         """ Optimization loop of plain PSO """
 
@@ -363,7 +363,7 @@ class PWLC_PSO (pso.PSO) :
 
         # Set the chaotic generator if not previously set
         if self.cgen is None :
-            self.cgen = cg.Tent((max_chaos_iters, self.D), mu=self.mu, gens=1)
+            self.cgen = cg.Tent((chaos_iters, self.D), mu=self.mu, gens=1)
 
         i = 0
         while True :
@@ -394,14 +394,15 @@ class PWLC_PSO (pso.PSO) :
 
             # Update after chaotic search if feasible
             if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(pbest[gbest_ind]) :
-                self.velocity[gbest_ind] = 0
+                self.velocity[gbest_ind] = cp[gbest_p] - self.particles[gbest_ind]
+                self.velocity = np.random.rand(self.D)*self.vmax*self.velocity[j]/np.linalg.norm(self.velocity[j])
                 pbest[gbest_ind] = cp[gbest_p]
                 self.particles[gbest_ind] = pbest[gbest_ind]
 
             gbest = pbest[gbest_ind]
             self.conv_curve.append(self.objkey(gbest))
-
             self.rrat *= self.rho
+
             i += 1
             if print_iters : print("\r{}".format(i), end="")
             if i == max_pso_iters or (np.abs(self.particles - gbest) < tol).all() :

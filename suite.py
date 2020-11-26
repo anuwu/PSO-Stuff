@@ -12,8 +12,7 @@ optimizers = {
     'vanilla'       : pso.PSO,
     'adaswarm'      : cpso.Adaswarm,
     'pwlc'          : cpso.PWLC_PSO,
-    'ripso'         : rpso.RI_PSO,
-    'ricpso'        : rpso.RIC_PSO
+    'rilcpso'       : rpso.RILC_PSO
 }
 
 class Suite () :
