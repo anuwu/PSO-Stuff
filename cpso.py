@@ -214,7 +214,7 @@ class Adaswarm (pso.PSO) :
 
             less = self.obj(part) < self.obj(pb)
             pb[less] = part[less]
-            gb = min(pb , key = lambda x : self.obj(x.reshape(1,-1))[0])
+            gb = min(pb , key = lambda x : self.obj(x.reshape(1, -1))[0])
 
             pcache.append(part)
             vcache.append(vel)

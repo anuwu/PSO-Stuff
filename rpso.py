@@ -153,6 +153,7 @@ class RILC_PSO (pso.PSO) :
 
     def forward (self, rad_init=None, c1=1, c2=1, alpha=1.2, beta=0.9,
                 max_iters=10000, local_div=None, rad_search_points=500, local_iters=500,
+                rrat=5, rho=0.99977,
                 tol=1e-2, trap_rat=0.20,
                 print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
@@ -232,7 +233,7 @@ class RILC_PSO (pso.PSO) :
             # Local search
             local_search = False
             if self.hulls == [] or (i > 0 and not (i % local_div)) :
-                lp = pbest[gbest_ind] + 2*self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
+                lp = pbest[gbest_ind] + rrat*self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
                 lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
                 lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
                 else np.array([
@@ -259,6 +260,7 @@ class RILC_PSO (pso.PSO) :
             gbest = pbest[gbest_ind]
             self.conv_curve.append(self.objkey(gbest))
 
+            rrat *= rho
             i += 1
             if print_iters : print("\rForward = {}".format(i), end="")
 
