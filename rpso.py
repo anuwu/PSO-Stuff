@@ -58,12 +58,13 @@ class Hull () :
         self.dets = dets
         self.supps = supps
 
-    def __init__ (self, verts) :
+    def __init__ (self, xs, opt) :
         """ Constructor of the Hull object """
 
-        self.verts = verts
-        self.hull = ConvexHull(verts)
-        self.pip = (verts[0] + verts[(len(verts) - 1)//2])/2
+        self.verts = np.copy(np.concatenate((xs, opt.reshape(1, -1)), axis=0))
+        self.opt = opt
+        self.hull = ConvexHull(self.verts)
+        self.pip = (self.verts[0] + self.verts[(len(self.verts) - 1)//2])/2
         self.max_vert_dist = np.max(np.linalg.norm(self.verts - self.pip, axis=1))
 
         self.__hyperplanes__ ()
@@ -110,7 +111,6 @@ class RILC_PSO (pso.PSO) :
     def optimize (self, runs=5, cent_init_rat=0.5, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
 
-
         if print_iters : print("Run 1")
         ret = self.forward(print_iters=print_iters)
         opt = ret['rets'][0]
@@ -153,7 +153,7 @@ class RILC_PSO (pso.PSO) :
 
     def forward (self, rad_init=None, c1=1, c2=1, alpha=1.2, beta=0.9,
                 max_iters=10000, local_div=None, rad_search_points=500, local_iters=500,
-                rrat=5, rho=0.99977,
+                rrat=5, rho=0.999,
                 tol=1e-2, trap_rat=0.20,
                 print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
@@ -292,23 +292,20 @@ class RILC_PSO (pso.PSO) :
 
         # Same magintude as forward PSO stopping criteria tolerance
         vmax = 1e-2*np.ones_like(self.llim).reshape(1, -1)
-        less_once, fs = False, None
+        # less_once, fs = False, None
+
+        delta_xs = xs - opt
+        nxs = delta_xs/np.linalg.norm(delta_xs, axis=1, keepdims=True)
+        fs = np.array([
+            get_dirmin(opt, nx, self.objkey, self.llim, self.rlim)
+            for nx in nxs
+        ])
 
         for i in range(max_iters) :
             r1s = np.random.rand(self.Np, self.D)
             r2s = np.random.rand(self.Np, self.D)
 
-            if less_once :
-                if fs is None :
-                    delta_xs = xs - opt
-                    nxs = delta_xs/np.linalg.norm(delta_xs, axis=1, keepdims=True)
-                    fs = np.array([
-                        get_dirmin(opt, nx, self.objkey, self.llim, self.rlim)
-                        for nx in nxs
-                    ])
-                pb_past = fs
-            else :
-                pb_past = xs
+            pb_past = fs
 
             # Each dimension of a particle has an associated update matrix
             mats = np.array([
@@ -343,14 +340,10 @@ class RILC_PSO (pso.PSO) :
             gbest = min(pbest, key=self.objkey)
 
             if print_iters : print("\rReverse = {}".format(i), end="")
-            if i >= min_iters and less.all() :
-                if not less_once :
-                    less_once = True
-                else :
-                    break
+            if less.all() :
+                break
 
-        verts = np.copy(np.concatenate((xs, gbest.reshape(1, -1)), axis=0))
-        self.hulls.append(Hull(verts))
+        self.hulls.append(Hull(xs, opt))
 
         if print_iters : print("\n", end="")
         return i
