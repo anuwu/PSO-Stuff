@@ -141,7 +141,7 @@ class RILC_PSO (pso.PSO) :
                 break
 
             if self.reverse(opt, print_iters=print_iters) >= 900 :
-                break
+                return ret
 
             optval = self.objkey(opt)
             if optval < min_optval :
@@ -216,10 +216,9 @@ class RILC_PSO (pso.PSO) :
                             gbest_rp = np.argmin(obj_rp).flatten()
 
                             # Replace original particle with best radial particle
-                            self.particles[j] = rad_points[gbest_rp]
-                            pbest[j] = self.particles[j]
-                            self.velocity[j] = self.particles[j] - rad_cent
-                            self.velocity[j] = np.random.rand(self.D)*self.vmax*self.velocity[j]/np.linalg.norm(self.velocity[j])
+                            pbest[j] = self.particles[j] = rad_points[gbest_rp]
+                            new_vel = self.particles[j] - rad_cent
+                            self.velocity[j] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
                             momentum[j] = 0
 
                             trap[-1] += 1
@@ -252,9 +251,10 @@ class RILC_PSO (pso.PSO) :
 
             # Reset gbest if local search is true
             if local_search and obj_lp[gbest_p] != np.inf and obj_lp[gbest_p] < self.objkey(pbest[gbest_ind]) :
-                self.velocity[gbest_ind] = 0
-                pbest[gbest_ind] = lp[gbest_p]
-                self.particles[gbest_ind] = pbest[gbest_ind]
+                new_vel = lp[gbest_p] - self.particles[gbest_ind]
+                pbest[gbest_ind] = self.particles[gbest_ind] = lp[gbest_p]
+                self.velocity[gbest_ind] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
+                momentum[gbest_ind] = 0
 
             # Copy gbest
             gbest = pbest[gbest_ind]
@@ -343,7 +343,7 @@ class RILC_PSO (pso.PSO) :
             if less.all() :
                 break
 
-        self.hulls.append(Hull(xs, opt))
+        self.hulls.append(Hull(pbest, opt))
 
         if print_iters : print("\n", end="")
         return i

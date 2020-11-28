@@ -86,8 +86,8 @@ class Bench () :
             for s, arr in rspec.items()
         }
 
-        ospec['var_iters'] = np.var(rpsec['iters'])
-        ospec['var_minima'] = np.var(rspec['minima'])
+        ospec['std_iters'] = np.std(rspec['iters'], ddof=1)
+        ospec['std_minima'] = np.std(rspec['minima'], ddof=1)
         ospec['conv_curves'] = (min_conv_curve, max_conv_curve)
         ospec['succ_ratio'] = np.sum(rspec['argmin_err'] < succ_tol)/runs
         self.spec['rspec'] = rspec
@@ -167,6 +167,7 @@ class Bulkin (Bench) :
         super().__init__(pso_class)
         self.obj_str = "Bulkin"
         self.dims = 2
+        self.llim, self.rlim = np.array([-15, -3]), np.array([-5, 3])
         self.llim, self.rlim = np.repeat(-10, 2), np.repeat(10, 2)
         self.argmins = np.array([[-10, 1]])
         self.min = 0
