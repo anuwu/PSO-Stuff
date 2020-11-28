@@ -86,6 +86,8 @@ class Bench () :
             for s, arr in rspec.items()
         }
 
+        ospec['var_iters'] = np.var(rpsec['iters'])
+        ospec['var_minima'] = np.var(rspec['minima'])
         ospec['conv_curves'] = (min_conv_curve, max_conv_curve)
         ospec['succ_ratio'] = np.sum(rspec['argmin_err'] < succ_tol)/runs
         self.spec['rspec'] = rspec

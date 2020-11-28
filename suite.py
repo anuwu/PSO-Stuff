@@ -56,6 +56,8 @@ class Suite () :
         'mean_no_conv',
         'mean_min_err',
         'mean_argmin_err',
+        'var_iters',
+        'var_minima',
         'succ_ratio'
         ]
 
