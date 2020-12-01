@@ -15,6 +15,15 @@ optimizers = {
     'rilcpso'       : rpso.RILC_PSO
 }
 
+rilcpso_vars = [
+    rpso.RILC_PSO,
+    rpso.RILC_PSO_Var1,
+    rpso.RILC_PSO_Var2,
+    rpso.RILC_PSO_Var3,
+    rpso.RILC_PSO_Var4,
+    rpso.RILC_PSO_Var5
+]
+
 class Suite () :
     """
     Takes in a list of pso variants and benchmarks them

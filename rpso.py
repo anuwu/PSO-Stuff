@@ -382,7 +382,7 @@ class RILC_PSO_Var1 (RILC_PSO) :
         """ Optimizer descriptor """
         return "Reverse-Informed PSO Variant 1"
 
-    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+    def optimize (self, runs=5, trap_inits=25, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
 
         if print_iters : print("Run 1")
@@ -402,12 +402,6 @@ class RILC_PSO_Var1 (RILC_PSO) :
             local_div += 25
             if print_iters : print(f"Run {i+2}")
             ret = self.forward(
-                rad_init=(min_opt,
-                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
-                    min_hull.max_vert_dist
-                ),
-                trap_inits=trap_inits,
-                trap_rat=trap_rat,
                 local_div=local_div,
                 print_iters=print_iters
             )
@@ -581,7 +575,7 @@ class RILC_PSO_Var4 (RILC_PSO) :
         """ Optimizer descriptor """
         return "Reverse-Informed PSO Variant 1"
 
-    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+    def optimize (self, runs=5, trap_inits=25, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
 
         if print_iters : print("Run 1")
@@ -599,10 +593,6 @@ class RILC_PSO_Var4 (RILC_PSO) :
         for i in range(runs-1) :
             if print_iters : print(f"Run {i+2}")
             ret = self.forward(
-                rad_init=(min_opt,
-                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
-                    min_hull.max_vert_dist
-                ),
                 rrat=0.8, rho=0.9,
                 trap_inits=trap_inits,
                 trap_rat=trap_rat,
@@ -647,7 +637,7 @@ class RILC_PSO_Var5 (RILC_PSO) :
         """ Optimizer descriptor """
         return "Reverse-Informed PSO Variant 1"
 
-    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+    def optimize (self, runs=5, trap_inits=25, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
 
         if print_iters : print("Run 1")
@@ -665,10 +655,6 @@ class RILC_PSO_Var5 (RILC_PSO) :
         for i in range(runs-1) :
             if print_iters : print(f"Run {i+2}")
             ret = self.forward(
-                rad_init=(min_opt,
-                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
-                    min_hull.max_vert_dist
-                ),
                 trap_inits=trap_inits,
                 trap_rat=trap_rat,
                 print_iters=print_iters
