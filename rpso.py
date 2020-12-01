@@ -1,3 +1,12 @@
+######################################################################
+# Parameters to vary -
+# 1. Radius, rho - 4
+# 2. Interval of local search - 3, 4, 5
+# 3. Particles initialised randomly or in a radius about hull - 1, 2, 4, 5
+# 4. EMPSO or Vanilla - 5
+######################################################################
+
+
 import numpy as np
 import pso
 from itertools import cycle
@@ -98,6 +107,7 @@ class RILC_PSO (pso.PSO) :
             obj         - Objective function to minimize
             llim        - Left limits in each dimension
             rlim        - Right limits in each dimension
+            Np          - Number of particles
             vrat        - Velocity limit ratio
         """
 
@@ -108,11 +118,11 @@ class RILC_PSO (pso.PSO) :
         """ Optimizer descriptor """
         return "Reverse-Informed PSO"
 
-    def optimize (self, runs=5, cent_init_rat=0.5, trap_rat=0.20, print_iters=False) :
+    def optimize (self, runs=5, init_particles_frac=0.5, trap_inits=25, trap_rat=0.20, print_iters=False) :
         """ Optimization loop involving forward() and reverse() """
 
         if print_iters : print("Run 1")
-        ret = self.forward(print_iters=print_iters)
+        ret = self.forward(trap_inits=trap_inits, trap_rat=trap_rat, print_iters=print_iters)
         opt = ret['rets'][0]
         rev_iters = self.reverse(opt, print_iters=print_iters)
 
@@ -129,9 +139,11 @@ class RILC_PSO (pso.PSO) :
             if print_iters : print(f"Run {i+2}")
             ret = self.forward(
                 rad_init=(min_opt,
-                    np.ceil(cent_init_rat*self.Np).astype(np.uint),
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
                     min_hull.max_vert_dist
                 ),
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
                 local_div=local_div,
                 print_iters=print_iters
             )
@@ -152,10 +164,10 @@ class RILC_PSO (pso.PSO) :
         return min_ret
 
     def forward (self, rad_init=None, c1=1, c2=1, alpha=1.2, beta=0.9,
-                max_iters=10000, local_div=None, rad_search_points=500, local_iters=500,
-                rrat=5, rho=0.999,
-                tol=1e-2, trap_rat=0.20,
-                print_iters=False) :
+                max_iters=10000, local_div=0, rad_search_points=500, local_iters=500,
+                rrat=0.5, rho=0.999,
+                trap_inits=25, trap_rat=0.2,
+                tol=1e-2, print_iters=False) :
         """ Forward PSO with hull exclusion and radial search """
 
         # Initialise particles and necessary states
@@ -231,8 +243,8 @@ class RILC_PSO (pso.PSO) :
 
             # Local search
             local_search = False
-            if self.hulls == [] or (i > 0 and not (i % local_div)) :
-                lp = pbest[gbest_ind] + rrat*self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
+            if self.hulls == [] or (not local_div) or (i > 0 and not (i % local_div)) :
+                lp = pbest[gbest_ind] + rrat*(self.rlim - self.llim)*(2*np.random.rand(rad_search_points, self.D) - 1)
                 lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
                 lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
                 else np.array([
@@ -265,7 +277,7 @@ class RILC_PSO (pso.PSO) :
             if print_iters : print("\rForward = {}".format(i), end="")
 
             # Trapping condition
-            if i >= 25 and sum(trap[-25:])/25 >= np.ceil(trap_rat*self.Np) :
+            if i >= trap_inits and sum(trap[-trap_inits:])/trap_inits >= np.ceil(trap_rat*self.Np) :
                 if print_iters : print("\n", end="")
                 return {
                     'rets'      : tuple(4*[None]),
@@ -347,3 +359,457 @@ class RILC_PSO (pso.PSO) :
 
         if print_iters : print("\n", end="")
         return i
+
+
+class RILC_PSO_Var1 (RILC_PSO) :
+    """
+    All particles randomly initialised on re-forward
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
+        """
+        Constructor of base PSO optimizer -
+            obj         - Objective function to minimize
+            llim        - Left limits in each dimension
+            rlim        - Right limits in each dimension
+            Np          - Number of particles
+            vrat        - Velocity limit ratio
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO Variant 1"
+
+    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters)
+        opt = ret['rets'][0]
+        rev_iters = self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
+        local_div = 0
+        for i in range(runs-1) :
+            local_div += 25
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
+                local_div=local_div,
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
+                break
+
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                return ret
+
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
+
+        if print_iters : print("\n", end="")
+        return min_ret
+
+
+class RILC_PSO_Var2 (RILC_PSO) :
+    """
+    All particles initialised outside hull
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
+        """
+        Constructor of base PSO optimizer -
+            obj         - Objective function to minimize
+            llim        - Left limits in each dimension
+            rlim        - Right limits in each dimension
+            Np          - Number of particles
+            vrat        - Velocity limit ratio
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO Variant 1"
+
+    def optimize (self, runs=5, init_particles_frac=1, trap_inits=25, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters)
+        opt = ret['rets'][0]
+        rev_iters = self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
+        local_div = 0
+        for i in range(runs-1) :
+            local_div += 25
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
+                local_div=local_div,
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
+                break
+
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                return ret
+
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
+
+        if print_iters : print("\n", end="")
+        return min_ret
+
+
+class RILC_PSO_Var3 (RILC_PSO) :
+    """
+    Local search in every iteration with (radius, rho) as RILC_PSO
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
+        """
+        Constructor of base PSO optimizer -
+            obj         - Objective function to minimize
+            llim        - Left limits in each dimension
+            rlim        - Right limits in each dimension
+            Np          - Number of particles
+            vrat        - Velocity limit ratio
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO Variant 1"
+
+    def optimize (self, runs=5, init_particles_frac=0.5, trap_inits=25, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters)
+        opt = ret['rets'][0]
+        rev_iters = self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
+        for i in range(runs-1) :
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
+                break
+
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                return ret
+
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
+
+        if print_iters : print("\n", end="")
+        return min_ret
+
+
+class RILC_PSO_Var4 (RILC_PSO) :
+    """
+    EMPSO with local search in every iteration with PWLC_PSO (radius, rho)
+    Also each particle randomly initialised
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
+        """
+        Constructor of base PSO optimizer -
+            obj         - Objective function to minimize
+            llim        - Left limits in each dimension
+            rlim        - Right limits in each dimension
+            Np          - Number of particles
+            vrat        - Velocity limit ratio
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO Variant 1"
+
+    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters, rrat=0.8, rho=0.9)
+        opt = ret['rets'][0]
+        rev_iters = self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
+        for i in range(runs-1) :
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                rrat=0.8, rho=0.9,
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
+                break
+
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                return ret
+
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
+
+        if print_iters : print("\n", end="")
+        return min_ret
+
+
+class RILC_PSO_Var5 (RILC_PSO) :
+    """
+    Vanilla PSO with local search in every iteration with RILC_PSO (radius, rho)
+    Also each particle initialised randomly
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, vrat=0.1) :
+        """
+        Constructor of base PSO optimizer -
+            obj         - Objective function to minimize
+            llim        - Left limits in each dimension
+            rlim        - Right limits in each dimension
+            Np          - Number of particles
+            vrat        - Velocity limit ratio
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Reverse-Informed PSO Variant 1"
+
+    def optimize (self, runs=5, init_particles_frac=0, trap_inits=25, trap_rat=0.20, print_iters=False) :
+        """ Optimization loop involving forward() and reverse() """
+
+        if print_iters : print("Run 1")
+        ret = self.forward(print_iters=print_iters)
+        opt = ret['rets'][0]
+        rev_iters = self.reverse(opt, print_iters=print_iters)
+
+        min_opt, min_optval = opt, self.objkey(opt)
+        min_ret, min_hull = ret, self.hulls[-1]
+
+        if rev_iters >= 900 :
+            if print_iters : print("\n", end="")
+            return min_ret
+
+        for i in range(runs-1) :
+            if print_iters : print(f"Run {i+2}")
+            ret = self.forward(
+                rad_init=(min_opt,
+                    np.ceil(init_particles_frac*self.Np).astype(np.uint),
+                    min_hull.max_vert_dist
+                ),
+                trap_inits=trap_inits,
+                trap_rat=trap_rat,
+                print_iters=print_iters
+            )
+
+            opt = ret['rets'][0]
+            if opt is None or i == runs - 2 :
+                break
+
+            if self.reverse(opt, print_iters=print_iters) >= 900 :
+                return ret
+
+            optval = self.objkey(opt)
+            if optval < min_optval :
+                min_opt, min_optval = opt, optval
+                min_ret, min_hulls = ret, self.hulls[-1]
+
+        if print_iters : print("\n", end="")
+        return min_ret
+
+    def forward (self, rad_init=None, w=0.7, c1=1.7, c2=1.7, alpha=1.2,
+                max_iters=10000, local_div=0, rad_search_points=500, local_iters=500,
+                rrat=0.5, rho=0.999,
+                trap_inits=25, trap_rat=0.2,
+                tol=1e-2, print_iters=False) :
+        """ Forward PSO with hull exclusion and radial search """
+
+        # Initialise particles and necessary states
+
+        self.initParticles(rad_init)
+        pbest = np.copy(self.particles)
+        gbest = min(pbest, key=self.objkey)
+        self.conv_curve = [self.objkey(gbest)]
+        trap = []
+
+        i = 0
+        while True :
+            # Velocity update
+            r1, r2 = np.random.rand(self.Np, self.D), np.random.rand(self.Np, self.D)
+            self.velocity = w*self.velocity + c1*r1*(pbest - self.particles) + c2*r2*(gbest - self.particles)
+
+            # Perform velocity clipping before running ipcd() to minimize any violations
+            self.velocity = pso.vclip(self.velocity, self.vmax)
+
+            ######################################################################
+            # Perform "Inverse Parabolic Confined Distribution" technique for
+            # boundary handling. Also returns updated particle position and velocity
+            ######################################################################
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+
+            # Hull exclusion
+            trap.append(0)
+            if self.hulls != [] :
+                for j, qp in enumerate(self.particles) :
+                    for hull in self.hulls :
+                        if hull.isPointIn(qp) :
+                            # Central about about which radial search occurs within a search radius
+                            rad_cent = pbest[np.argmin(np.array([
+                                np.inf if k == j else self.objkey(pb)
+                                for k, pb in enumerate(pbest)
+                            ])).flatten()[0]]
+
+                            rad_points = rad_cent + self.vmax*(2*np.random.rand(rad_search_points, self.D) - 1)
+
+                            # Checking if radial particle violates dimension limits
+                            lim_rp = np.logical_or(self.llim.reshape(1, -1) > rad_points, rad_points < self.rlim.reshape(1, -1)).any(axis=1)
+
+                            # Checking if radial particle itself is in some minima hull
+                            rp_out_hull = np.array([
+                                np.array([
+                                    h.isPointIn(rp)
+                                    for h in self.hulls
+                                ]).any()
+                                for rp in rad_points
+                            ])
+
+                            # Disallow particle if it's violated search limits or within some hull
+                            obj_rp = np.where(np.logical_or(lim_rp, rp_out_hull), np.inf, self.obj(rad_points))
+
+                            # Best radial particle
+                            gbest_rp = np.argmin(obj_rp).flatten()
+
+                            # Replace original particle with best radial particle
+                            pbest[j] = self.particles[j] = rad_points[gbest_rp]
+                            new_vel = self.particles[j] - rad_cent
+                            self.velocity[j] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
+
+                            trap[-1] += 1
+                            break
+
+            # Update pbest, gbest
+            less = self.obj(self.particles) < self.obj(pbest)
+            pbest[less] = np.copy(self.particles[less])
+            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
+
+            # Local search
+            local_search = False
+            if self.hulls == [] or (not local_div) or (i > 0 and not (i % local_div)) :
+                lp = pbest[gbest_ind] + rrat*(self.rlim - self.llim)*(2*np.random.rand(rad_search_points, self.D) - 1)
+                lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
+                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
+                else np.array([
+                    not np.array([
+                        hull.isPointIn(qp)
+                        for hull in self.hulls
+                    ]).any()
+                    for qp in lp
+                ])
+
+                obj_lp = np.where(np.logical_and(lp_in_lims, lp_out_hulls),
+                                self.obj(lp),
+                                np.inf)
+                gbest_p = np.argmin(obj_lp).flatten()[0]
+                local_search = True
+
+            # Reset gbest if local search is true
+            if local_search and obj_lp[gbest_p] != np.inf and obj_lp[gbest_p] < self.objkey(pbest[gbest_ind]) :
+                new_vel = lp[gbest_p] - self.particles[gbest_ind]
+                pbest[gbest_ind] = self.particles[gbest_ind] = lp[gbest_p]
+                self.velocity[gbest_ind] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
+
+            # Copy gbest
+            gbest = pbest[gbest_ind]
+            self.conv_curve.append(self.objkey(gbest))
+
+            rrat *= rho
+            i += 1
+            if print_iters : print("\rForward = {}".format(i), end="")
+
+            # Trapping condition
+            if i >= trap_inits and sum(trap[-trap_inits:])/trap_inits >= np.ceil(trap_rat*self.Np) :
+                if print_iters : print("\n", end="")
+                return {
+                    'rets'      : tuple(4*[None]),
+                    'kwrets'    : {}
+                }
+
+            # Stopping criteria
+            if i == max_iters or (np.abs(self.particles - gbest) < tol).all() :
+                break
+
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta))
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)
