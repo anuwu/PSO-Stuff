@@ -417,3 +417,97 @@ class PWLC_PSO (pso.PSO) :
         grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*w)
         if print_iters : print("\n", end="")
         return self.optRet(gbest, grad, tol, i)
+
+
+class PWLC_EMPSO (pso.PSO) :
+    """
+    PWLCPSO with momentum
+    """
+
+    def __init__ (self, obj, llim, rlim, Np, mu=0.7, rrat=0.8, rho=0.9, vrat=0.1) :
+        """
+        Constructor for the hybrid embedded chaotic search PSO optimizer -
+            mu      - Parameter for the piecewise linear chaotic map
+            rrat    - Ratio in terms of dimension size for the chaotic search radius
+            rho     - Reduction factor for the search radius
+
+        Rest are defined in the base class
+        """
+
+        super().__init__(obj, llim, rlim, Np, vrat)
+        self.mu = mu
+        self.rrat = rrat
+        self.rho = rho
+        self.cgen = None
+
+    def __str__ (self) :
+        """ Optimizer descriptor """
+        return "Piece-wise Linear Chaotic PSO"
+
+    def _optim_init (self) :
+        """ Initialiser of certain state variables before the optimization loop """
+
+        pbest, gbest = super()._optim_init()
+        return np.zeros_like(pbest), pbest, gbest
+
+    def optimize (self, beta=0.9, c1=0.7, c2=0.7, alpha=1.2,
+                chaos_iters=500, max_pso_iters=10000, tol=1e-2,
+                print_iters=False) :
+        """ Optimization loop of plain PSO """
+
+        momentum, pbest, gbest = self._optim_init()
+
+        # Set the chaotic generator if not previously set
+        if self.cgen is None :
+            self.cgen = cg.Tent((chaos_iters, self.D), mu=self.mu, gens=1)
+
+        i = 0
+        while True :
+            # Momentum update
+            r1, r2 = np.random.rand(self.Np, self.D), np.random.rand(self.Np, self.D)
+            momentum = beta*momentum + (1-beta)*self.velocity
+            self.velocity = momentum + c1*r1*(pbest - self.particles) + c2*r2*(gbest - self.particles)
+
+            # Perform velocity clipping before running ipcd() to minimize any violations
+            self.velocity = pso.vclip(self.velocity, self.vmax)
+
+            ######################################################################
+            # Perform "Inverse Parabolic Confined Distribution" technique for
+            # boundary handling. Also returns updated particle position and velocity
+            ######################################################################
+            self.particles, self.velocity = pso.ipcd(self.particles, self.velocity, self.llim, self.rlim, alpha)
+
+            # Update pbest, gbest
+            less = self.obj(self.particles) < self.obj(pbest)
+            pbest[less] = np.copy(self.particles[less])
+            gbest_ind = np.argmin(self.obj(pbest)).flatten()[0]
+
+            # Chaotic search
+            cp = pbest[gbest_ind] + self.rrat*(self.rlim - self.llim)*(2*self.cgen.chaosPoints(1) - 1)
+            obj_cp = np.where(np.logical_and(self.llim.reshape(1,-1) <= cp, cp <= self.rlim.reshape(1,-1)).all(axis=1),
+                            self.obj(cp),
+                            np.inf)
+            gbest_p = np.argmin(obj_cp).flatten()[0]
+
+            # Update after chaotic search if feasible
+            if obj_cp[gbest_p] != np.inf and obj_cp[gbest_p] < self.objkey(pbest[gbest_ind]) :
+                new_vel = cp[gbest_p] - self.particles[gbest_ind]
+                self.velocity[gbest_ind] = np.random.rand(self.D)*self.vmax*new_vel/np.linalg.norm(new_vel)
+                momentum[gbest_ind] = 0
+                pbest[gbest_ind] = self.particles[gbest_ind] = cp[gbest_p]
+
+            # Copy gbest
+            gbest = pbest[gbest_ind]
+            self.conv_curve.append(self.objkey(gbest))
+            self.rrat *= self.rho
+
+            i += 1
+            if print_iters : print("\r{}".format(i), end="")
+
+            # Stopping criteria
+            if i == max_pso_iters or (np.abs(self.particles - gbest) < tol).all() :
+                break
+
+        grad = lambda x : -(c1*np.sum(r1) + c2*np.sum(r2))*(x - gbest)/(len(r1)*(1-beta))
+        if print_iters : print("\n", end="")
+        return self.optRet(gbest, grad, tol, i)

@@ -15,14 +15,19 @@ optimizers = {
     'rilcpso'       : rpso.RILC_PSO
 }
 
-rilcpso_vars = [
-    rpso.RILC_PSO,
-    rpso.RILC_PSO_Var1,
-    rpso.RILC_PSO_Var2,
-    rpso.RILC_PSO_Var3,
-    rpso.RILC_PSO_Var4,
-    rpso.RILC_PSO_Var5
-]
+rilcpso_vars = {
+    'Og'        : rpso.RILC_PSO,
+    'Var1'      : rpso.RILC_PSO_Var1,
+    'Var2'      : rpso.RILC_PSO_Var2,
+    'Var3'      : rpso.RILC_PSO_Var3,
+    'Var4'      : rpso.RILC_PSO_Var4,
+    'Var5'      : rpso.RILC_PSO_Var5
+}
+
+pwlcpso_vars = {
+    'velocity'      : cpso.PWLC_PSO,
+    'momentum'      : cpso.PWLC_EMPSO
+}
 
 class Suite () :
     """
