@@ -60,6 +60,7 @@ class Suite () :
 
         self.__check_env__ ()
 
+
     def eval (self, bench_iters=50, print_iters=False) :
         """ Performs the suite of benchmarks """
 
