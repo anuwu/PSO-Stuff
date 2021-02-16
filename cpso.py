@@ -3,7 +3,7 @@ import pso
 import chaosGen as cg
 from collections import deque
 
-class Adaswarm (pso.PSO) :
+class EMPSO (pso.PSO) :
     """
     AdaSwarm with random number generators replaced with chaotic generators
 
@@ -24,13 +24,13 @@ class Adaswarm (pso.PSO) :
                     lambda x : cg.cgen[dic['name']](*(((Np, D), ) + dic['args'])).chaosPoints(x)
 
             initgen, randgen = get_gen(swarm_args['init_cmap']), get_gen(swarm_args['dyn_cmap'])
-            return Adaswarm(obj, llim, rlim, Np, initgen, randgen)
+            return EMPSO(obj, llim, rlim, Np, initgen, randgen)
 
         return ret_swarm
 
     def get_plain_swarm () :
         """ Returns a plain swarm """
-        return lambda obj, llim, rlim, Np : Adaswarm(obj, llim, rlim, Np)
+        return lambda obj, llim, rlim, Np : EMPSO(obj, llim, rlim, Np)
 
     def __setcache__ (self) :
         """
@@ -91,7 +91,7 @@ class Adaswarm (pso.PSO) :
 
     def __str__ (self) :
         """ Optimizer descriptor """
-        return "Adaswarm"
+        return "EMPSO"
 
     def _optim_init (self) :
         """ Initialiser of certain state variables before the optimization loop """
