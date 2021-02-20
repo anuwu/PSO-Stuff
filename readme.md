@@ -1,8 +1,10 @@
-# PSO and Gradient Approximation
+# Gradient Approximation and FCPSO
 
 Contains implementation of [Adaswarm](https://arxiv.org/abs/2006.09875) by *Mohapatra et. al* and also its modification by Chaotic Random Number Generators in the module [chaosGen.py](chaosGen.py). Below is an example of the Chaotic Pseudo-Random-Number-Generator.
 
 ![alt text](Docs/chaosGen.png)
+
+Also contains implementation of [FCPSO-em](fcpso.py), which is a modification of SMPSO with exponentially-averaged momentum adapted to single-objective problems. 
 
 The aim of adaswarm is for gradient approximation in neural networks. We have tested adaswarm on simple 1 dimensional objective functions for the accuracy of its gradient. It has worked well on a highly non-linear and multimodal Rastrigin function. Please check [this](Adaswarm.ipynb) notebook for the demo.
 
