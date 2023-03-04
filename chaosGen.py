@@ -122,7 +122,7 @@ class InverseLE (ChaosGenerator) :
             lo, mid, hi = 0, 0.5, 1
             cmap = lambda p : lambda x : x/p if x <= p else (1-x)/(1-p)
         else :
-            n = np.ceil(np.exp(self.le)).astype(np.int)
+            n = np.ceil(np.exp(self.le)).astype(np.int64)
             lep = lambda p : self.le - (n-2)/n*np.log(n) + p*np.log(p) + (2/n - p)*np.log(2/n - p)
             lo, mid, hi = 0, 1/n, 2/n
 
