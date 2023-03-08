@@ -82,8 +82,8 @@ class Suite () :
             spec_csv = os.path.join(self.suite_fold, f"{bname}_ospec.csv")
             conv_png = os.path.join(self.suite_fold, f"{bname}_conv.png")
             if os.path.exists(spec_csv) and os.path.exists(conv_png) :
-                continue
-
+               continue 
+               
             print(f"On bench {bname}")
             self.specs[bname] = {}
             for pi, pc in zip(self.pso_ids, self.pso_classes) :

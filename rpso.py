@@ -246,7 +246,7 @@ class RILC_PSO (pso.PSO) :
             if self.hulls == [] or (not local_div) or (i > 0 and not (i % local_div)) :
                 lp = pbest[gbest_ind] + rrat*(self.rlim - self.llim)*(2*np.random.rand(rad_search_points, self.D) - 1)
                 lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
-                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
+                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool_) if self.hulls == [] \
                 else np.array([
                     not np.array([
                         hull.isPointIn(qp)
@@ -755,7 +755,7 @@ class RILC_PSO_Var5 (RILC_PSO) :
             if self.hulls == [] or (not local_div) or (i > 0 and not (i % local_div)) :
                 lp = pbest[gbest_ind] + rrat*(self.rlim - self.llim)*(2*np.random.rand(rad_search_points, self.D) - 1)
                 lp_in_lims = np.logical_and(self.llim.reshape(1, -1) <= lp, lp <= self.rlim.reshape(1, -1)).all(axis=1)
-                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool) if self.hulls == [] \
+                lp_out_hulls = np.ones_like(lp_in_lims).astype(np.bool_) if self.hulls == [] \
                 else np.array([
                     not np.array([
                         hull.isPointIn(qp)
